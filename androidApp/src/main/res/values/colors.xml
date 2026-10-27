@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the shared theme: primary slate and the light canvas. -->
+    <color name="brand">#1E6E74</color>
+    <color name="canvas">#F2F8F8</color>
+    <color name="icon_background">#D9ECEC</color>
+</resources>

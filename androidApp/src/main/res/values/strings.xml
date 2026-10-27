@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DiaRoutine</string>
+    <string name="channel_doses">Medication reminders</string>
+    <string name="channel_doses_description">When a scheduled dose is due</string>
+    <string name="channel_routine">Routine reminders</string>
+    <string name="channel_routine_description">Glucose checks, walks, appointments and refills</string>
+    <string name="action_mark_taken">Mark as taken</string>
+</resources>

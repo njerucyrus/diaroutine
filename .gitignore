@@ -1,0 +1,18 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+# Release signing: never commit the upload key or its passwords.
+keystore.properties
+keystore/
+*.jks
+*.keystore
+.idea/
+*.iml
+.DS_Store
+captures/
+xcuserdata/
+*.xcuserstate
+
+# Third-party UI inspiration, not ours to redistribute.
+Screenshot*.png
