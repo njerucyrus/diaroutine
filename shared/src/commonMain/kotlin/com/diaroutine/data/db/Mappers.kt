@@ -4,6 +4,7 @@ import com.diaroutine.core.time.dateOfEpochDay
 import com.diaroutine.core.time.epochDay
 import com.diaroutine.core.time.minuteOfDay
 import com.diaroutine.core.time.timeOfMinute
+import com.diaroutine.domain.model.AppLockSettings
 import com.diaroutine.domain.model.Appointment
 import com.diaroutine.domain.model.Caregiver
 import com.diaroutine.domain.model.DailyHabit
@@ -41,7 +42,9 @@ fun ProfileEntity.toDomain(): Profile = Profile(
     }.sortedBy { it.time },
     remindersEnabled = remindersEnabled,
     caregiver = Caregiver(caregiverEnabled, caregiverName, caregiverContact),
+    appLock = AppLockSettings(appLockEnabled, appLockAfterSeconds),
     onboarded = onboarded,
+    tourCompleted = tourCompleted,
 )
 
 fun Profile.toEntity(): ProfileEntity = ProfileEntity(
@@ -59,6 +62,9 @@ fun Profile.toEntity(): ProfileEntity = ProfileEntity(
     caregiverName = caregiver.name.trim(),
     caregiverContact = caregiver.contact.trim(),
     onboarded = onboarded,
+    appLockEnabled = appLock.enabled,
+    appLockAfterSeconds = appLock.afterSeconds,
+    tourCompleted = tourCompleted,
 )
 
 fun MedicationEntity.toDomain(): Medication = Medication(

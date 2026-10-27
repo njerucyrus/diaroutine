@@ -25,7 +25,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -60,6 +62,15 @@ class AppContainer(
     val habits = HabitRepository(database.habitDao())
     val appointments = AppointmentRepository(database.appointmentDao())
 
+    val appLock = AppLock(clock)
+
+    init {
+        // On the main thread, alongside the platform's shown/hidden calls.
+        scope.launch(Dispatchers.Main) {
+            profile.profile.map { it.appLock }.distinctUntilChanged().collect(appLock::apply)
+        }
+    }
+
     fun now(): LocalDateTime = clock.now().toLocalDateTime(timeZone)
 
     fun today(): LocalDate = now().date
@@ -79,14 +90,23 @@ class AppContainer(
         return combine(core, appointments.all) { snapshot, appointments -> snapshot.copy(appointments = appointments) }
     }
 
-    suspend fun completeOnboarding(name: String, unit: GlucoseUnit, withExampleRoutine: Boolean) {
+    suspend fun completeOnboarding(name: String, unit: GlucoseUnit, withExampleRoutine: Boolean, appLockEnabled: Boolean) {
         val today = today()
         if (withExampleRoutine) {
             ExampleRoutine.medications(today).forEach { medications.save(it) }
             ExampleRoutine.appointments(today).forEach { appointments.save(it) }
         }
-        profile.update { it.copy(name = name.trim(), glucoseUnit = unit, onboarded = true) }
+        profile.update {
+            it.copy(
+                name = name.trim(),
+                glucoseUnit = unit,
+                appLock = it.appLock.copy(enabled = appLockEnabled),
+                onboarded = true,
+            )
+        }
     }
+
+    suspend fun completeTour() = profile.update { it.copy(tourCompleted = true) }
 
     /** The past week as text, for the person to send wherever they choose. */
     suspend fun weeklySummaryText(): String {

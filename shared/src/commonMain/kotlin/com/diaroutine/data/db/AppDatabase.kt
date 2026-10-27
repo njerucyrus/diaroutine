@@ -1,5 +1,6 @@
 package com.diaroutine.data.db
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -17,8 +18,12 @@ import kotlinx.coroutines.IO
         DailyHabitEntity::class,
         AppointmentEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [
+        // 2: app lock settings and the app tour flag on the profile.
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {

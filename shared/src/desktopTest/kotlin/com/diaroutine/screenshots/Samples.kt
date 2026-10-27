@@ -23,6 +23,7 @@ import com.diaroutine.features.meds.MedsUiState
 import com.diaroutine.features.profile.ProfileUiState
 import com.diaroutine.features.today.TodayUiState
 import com.diaroutine.features.track.TrackUiState
+import com.diaroutine.platform.LockAvailability
 import com.diaroutine.platform.ReminderAccess
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -119,6 +120,7 @@ object Samples {
         isLoading = false,
         profile = profile,
         access = ReminderAccess(notificationsAllowed = true, preciseTiming = false, canRequestPreciseTiming = true),
-        appVersion = "0.1.0",
+        lockAvailability = LockAvailability.Available,
+        appVersion = "1.0.0",
     )
 }

@@ -16,6 +16,17 @@ data class ReminderAccess(
     val canRequestPreciseTiming: Boolean,
 )
 
+enum class LockAvailability {
+    /** Biometrics or a screen lock can verify the person. */
+    Available,
+
+    /** The phone has no screen lock set, so there is nothing to verify against. */
+    NoScreenLock,
+
+    /** The phone can't do it at all. */
+    Unsupported,
+}
+
 /** What the shared app asks of the operating system. */
 interface PlatformServices {
     val uses24HourClock: Boolean
@@ -35,4 +46,15 @@ interface PlatformServices {
     fun requestNotificationAccess()
 
     fun openPreciseTimingSettings()
+
+    fun lockAvailability(): LockAvailability
+
+    /**
+     * Asks the person to verify with their fingerprint, face or screen lock. The system
+     * does the checking; the app only learns whether it succeeded.
+     */
+    fun authenticate(onResult: (success: Boolean) -> Unit)
+
+    /** Opens the phone's security settings, where a screen lock can be set up. */
+    fun openSecuritySettings()
 }

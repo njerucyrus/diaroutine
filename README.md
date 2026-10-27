@@ -40,6 +40,22 @@ Screens take immutable UI state and send actions; ViewModels combine repository
 flows into that state. Everything is stored locally in Room — nothing leaves the
 device unless the person shares a summary themselves.
 
+## First run, tour and app lock
+
+- **Onboarding** (`features/onboarding`): four intro slides, setup (name, units, optional
+  example routine), then an app-lock offer and a notification-permission step — each shown
+  only when it applies to the phone.
+- **App tour** (`ui/tour`): a spotlight walkthrough of the Today screen that runs once after
+  onboarding and can be replayed from Profile → About. Screens mark what the tour points at
+  with `Modifier.tourTarget(...)`.
+- **App lock** (`app/AppLock.kt`): when on, the app asks for fingerprint, face or the screen
+  lock on launch and after being away longer than the chosen delay (immediately, 1 or 5
+  minutes). The system prompt (`androidx.biometric`) does the verifying; the recents
+  thumbnail is hidden while lock is on (Android 13+).
+
+The database is at version 2 (lock and tour settings on the profile), reached from version 1
+by a Room auto-migration; schemas are in `shared/schemas/`.
+
 ## Reminders
 
 `ReminderPlanner` turns the routine into the next 48 hours of reminders (doses,

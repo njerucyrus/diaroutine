@@ -1,5 +1,6 @@
 package com.diaroutine.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -23,6 +24,10 @@ data class ProfileEntity(
     val caregiverName: String,
     val caregiverContact: String,
     val onboarded: Boolean,
+    // Added in version 2.
+    @ColumnInfo(defaultValue = "0") val appLockEnabled: Boolean,
+    @ColumnInfo(defaultValue = "0") val appLockAfterSeconds: Int,
+    @ColumnInfo(defaultValue = "0") val tourCompleted: Boolean,
 )
 
 @Entity(tableName = "medications")

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.diaroutine.features.insights.InsightsScreen
+import com.diaroutine.features.lock.LockScreen
 import com.diaroutine.features.meds.MedsScreen
 import com.diaroutine.features.onboarding.OnboardingScreen
 import com.diaroutine.features.today.TodayScreen
@@ -63,9 +64,9 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 
 /**
- * Google Play listing graphics: the 512px icon, the 1024×500 feature graphic and
- * 1080×1920 phone screenshots, plus smaller copies for the website.
- * Written to shared/build/playstore.
+ * Google Play listing graphics: the 512px icon, the 1024×500 feature graphic, and
+ * screenshots for phones, 7-inch and 10-inch tablets, plus smaller copies for the
+ * website. Written to shared/build/playstore.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 class StoreAssetsTest {
@@ -74,36 +75,84 @@ class StoreAssetsTest {
     private val tealDeep = Color(0xFF0F4F54)
     private val aqua = LightDiaColors.card
 
-    private data class Shot(val file: String, val title: String, val subtitle: String, val screen: BufferedImage)
+    /**
+     * A screenshot size Play asks for: the [canvasWidth]×[canvasHeight] image, the app drawn
+     * at the device's own [screenWidthDp]×[screenHeightDp], shown in a frame [frameWidthDp] wide.
+     */
+    private enum class Device(
+        val folder: String,
+        val canvasWidth: Int,
+        val canvasHeight: Int,
+        val density: Float,
+        val screenWidthDp: Int,
+        val screenHeightDp: Int,
+        val frameWidthDp: Int,
+        val cornerDp: Int,
+        val bezelDp: Int,
+    ) {
+        Phone("phone", 1080, 1920, 2.7f, 392, 700, 300, 42, 8),
+        Tablet7("tablet-7in", 1200, 1920, 2f, 600, 960, 470, 30, 12),
+        Tablet10("tablet-10in", 1600, 2560, 2.5f, 800, 1280, 540, 30, 14),
+    }
+
+    private data class Shot(
+        val file: String,
+        val title: String,
+        val subtitle: String,
+        val dark: Boolean = false,
+        val tab: Int? = null,
+        val screen: @Composable () -> Unit,
+    )
+
+    private val shots = listOf(
+        Shot("01-timeline", "Your whole day\nin one timeline", "Doses, checks, walks and visits.", tab = 0) {
+            TodayScreen(todayState, {}, {}, zone)
+        },
+        Shot("02-medications", "Reminders that match\nyour prescription", "Mark doses taken from the notification.", tab = 1) {
+            MedsScreen(Samples.medsState, {}, zone)
+        },
+        Shot("03-glucose", "Know where your\nnumbers stand", "Target range, trend and time in range.", tab = 2) {
+            TrackScreen(Samples.trackState, {}, zone)
+        },
+        Shot("04-weekly", "See your week\nat a glance", "Doses taken, streaks and trends.", tab = 3) {
+            InsightsScreen(Samples.insightsState, onShare = {})
+        },
+        Shot("05-dark", "Easy on the eyes,\nday and night", "A calm dark theme for evenings.", dark = true, tab = 0) {
+            TodayScreen(todayState, {}, {}, zone)
+        },
+        Shot("06-private", "Private\nby design", "No account, no ads, no tracking.") {
+            OnboardingScreen({ it(true) }, {}, initialSlide = 3)
+        },
+        Shot("07-app-lock", "Locked with your\nfingerprint or face", "Keep your health data private.") {
+            LockScreen(onUnlock = {})
+        },
+    )
 
     @Test
     fun renderStoreAssets() {
         val icon = render(512, 512, 1f) { AppIcon(Modifier.fillMaxSize()) }
         save(icon, "icon-512.png")
 
-        val screenHeight = 700
-        val shots = listOf(
-            Shot("01-timeline", "Your whole day\nin one timeline", "Doses, checks, walks and visits.",
-                renderScreen(heightDp = screenHeight, selectedTab = 0) { TodayScreen(todayState, {}, {}, zone) }),
-            Shot("02-medications", "Reminders that match\nyour prescription", "Mark doses taken from the notification.",
-                renderScreen(heightDp = screenHeight, selectedTab = 1) { MedsScreen(Samples.medsState, {}, zone) }),
-            Shot("03-glucose", "Know where your\nnumbers stand", "Target range, trend and time in range.",
-                renderScreen(heightDp = screenHeight, selectedTab = 2) { TrackScreen(Samples.trackState, {}, zone) }),
-            Shot("04-weekly", "See your week\nat a glance", "Doses taken, streaks and trends.",
-                renderScreen(heightDp = screenHeight, selectedTab = 3) { InsightsScreen(Samples.insightsState, onShare = {}) }),
-            Shot("05-dark", "Easy on the eyes,\nday and night", "A calm dark theme for evenings.",
-                renderScreen(heightDp = screenHeight, dark = true, selectedTab = 0) { TodayScreen(todayState, {}, {}, zone) }),
-            Shot("06-private", "Private\nby design", "No account, no ads, no tracking.",
-                renderScreen(heightDp = screenHeight) { OnboardingScreen { _, _, _ -> } }),
-        )
-        File(out, "screenshots").mkdirs()
         File(out, "web").mkdirs()
-        shots.forEach { shot ->
-            val image = render(1080, 1920, 2.7f) { StoreScreenshot(shot.title, shot.subtitle, shot.screen.toBitmap()) }
-            save(image, "screenshots/${shot.file}.png")
-            save(scaled(image, 540, 960), "web/${shot.file}.png")
+        for (device in Device.entries) {
+            File(out, "screenshots/${device.folder}").mkdirs()
+            for (shot in shots) {
+                val screen = renderScreen(
+                    heightDp = device.screenHeightDp,
+                    widthDp = device.screenWidthDp,
+                    dark = shot.dark,
+                    selectedTab = shot.tab,
+                    content = shot.screen,
+                ).toBitmap()
+                val image = render(device.canvasWidth, device.canvasHeight, device.density) {
+                    StoreScreenshot(shot.title, shot.subtitle, screen, device)
+                }
+                save(image, "screenshots/${device.folder}/${shot.file}.png")
+                if (device == Device.Phone) save(scaled(image, 540, 960), "web/${shot.file}.png")
+            }
         }
 
+        val screenHeight = Device.Phone.screenHeightDp
         val today = renderScreen(heightDp = screenHeight) { TodayScreen(todayState, {}, {}, zone) }
         save(render(1024, 500, 2f) { FeatureGraphic(today.toBitmap(), icon.toBitmap()) }, "feature-graphic.png")
         save(scaled(renderScreen(heightDp = screenHeight, selectedTab = 0) { TodayScreen(todayState, {}, {}, zone) }, 560, 1000), "web/hero.png")
@@ -143,9 +192,9 @@ class StoreAssetsTest {
         drawPath(check, Color.White, style = Stroke(width = 4.5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 
-    /** 1080×1920: a caption over the app's real screen in a simple phone frame. */
+    /** A caption over the app's real screen in a simple device frame. */
     @Composable
-    private fun StoreScreenshot(title: String, subtitle: String, screen: ImageBitmap) {
+    private fun StoreScreenshot(title: String, subtitle: String, screen: ImageBitmap, device: Device) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(teal, tealDeep)))) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp).padding(top = 40.dp)) {
                 Text(
@@ -156,24 +205,30 @@ class StoreAssetsTest {
                 Spacer(Modifier.height(10.dp))
                 Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.86f))
             }
-            PhoneFrame(screen, Modifier.align(Alignment.BottomCenter).offset(y = 12.dp).width(300.dp))
+            DeviceFrame(
+                screen = screen,
+                cornerDp = device.cornerDp,
+                bezelDp = device.bezelDp,
+                modifier = Modifier.align(Alignment.BottomCenter).offset(y = 12.dp).width(device.frameWidthDp.dp),
+            )
         }
     }
 
     @Composable
-    private fun PhoneFrame(screen: ImageBitmap, modifier: Modifier) {
+    private fun DeviceFrame(screen: ImageBitmap, cornerDp: Int, bezelDp: Int, modifier: Modifier) {
+        val outer = RoundedCornerShape(cornerDp.dp)
         Box(
             modifier
-                .clip(RoundedCornerShape(42.dp))
+                .clip(outer)
                 .background(Color(0xFF0B1415))
-                .border(2.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(42.dp))
-                .padding(8.dp),
+                .border(2.dp, Color.White.copy(alpha = 0.18f), outer)
+                .padding(bezelDp.dp),
         ) {
             Image(
                 bitmap = screen,
                 contentDescription = null,
                 contentScale = ContentScale.FillWidth,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(34.dp)),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape((cornerDp - bezelDp).dp)),
             )
         }
     }
@@ -193,7 +248,7 @@ class StoreAssetsTest {
                     )
                 }
                 Box(Modifier.width(200.dp).fillMaxHeight()) {
-                    PhoneFrame(screen, Modifier.align(Alignment.TopCenter).offset(y = 28.dp).width(176.dp))
+                    DeviceFrame(screen, cornerDp = 42, bezelDp = 8, modifier = Modifier.align(Alignment.TopCenter).offset(y = 28.dp).width(176.dp))
                 }
                 Spacer(Modifier.width(24.dp))
             }

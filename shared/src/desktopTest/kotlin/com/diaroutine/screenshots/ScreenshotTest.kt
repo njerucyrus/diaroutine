@@ -6,7 +6,9 @@ import com.diaroutine.domain.model.MealContext
 import com.diaroutine.features.insights.InsightsScreen
 import com.diaroutine.features.meds.MedicationEditorSheet
 import com.diaroutine.features.meds.MedsScreen
+import com.diaroutine.features.lock.LockScreen
 import com.diaroutine.features.onboarding.OnboardingScreen
+import com.diaroutine.features.onboarding.OnboardingStep
 import com.diaroutine.features.profile.ProfileScreen
 import com.diaroutine.features.today.TodayScreen
 import com.diaroutine.features.track.GlucoseLogSheet
@@ -15,6 +17,7 @@ import com.diaroutine.features.track.TrackScreen
 import com.diaroutine.screenshots.Samples.medsState
 import com.diaroutine.screenshots.Samples.todayState
 import com.diaroutine.screenshots.Samples.zone
+import com.diaroutine.ui.tour.TourController
 import kotlinx.datetime.LocalTime
 import java.awt.image.BufferedImage
 import java.io.File
@@ -36,8 +39,20 @@ class ScreenshotTest {
         tall("02-meds") { MedsScreen(medsState, {}, zone) }
         tall("03-track") { TrackScreen(Samples.trackState, {}, zone) }
         tall("04-insights") { InsightsScreen(Samples.insightsState, onShare = {}) }
-        tall("05-profile") { ProfileScreen(Samples.profileState) {} }
-        save("06-onboarding", renderScreen { OnboardingScreen { _, _, _ -> } })
+        tall("05-profile") { ProfileScreen(Samples.profileState, onAction = {}, onStartTour = {}) }
+        // First run: every slide, then each step. Notifications off so the reminders step shows.
+        val firstRun = FakePlatform(notificationsAllowed = false)
+        (0..3).forEach { slide ->
+            save("06-onboarding-slide-${slide + 1}", renderScreen(platform = firstRun) { OnboardingScreen({ it(true) }, {}, initialSlide = slide) })
+        }
+        listOf(OnboardingStep.Setup, OnboardingStep.Lock, OnboardingStep.Reminders).forEach { step ->
+            save("06-onboarding-${step.name.lowercase()}", renderScreen(platform = firstRun) { OnboardingScreen({ it(true) }, {}, initialStep = step) })
+        }
+        save("09-lock", renderScreen { LockScreen(onUnlock = {}) })
+        listOf(0, 2, 4, 6).forEach { step ->
+            val tour = TourController().apply { start(step) }
+            save("10-tour-step-${step + 1}", renderScreen(selectedTab = 0, tour = tour) { TodayScreen(todayState, {}, {}, zone) })
+        }
         save(
             "07-sheet-glucose",
             renderScreen {

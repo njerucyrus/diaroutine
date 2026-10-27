@@ -27,6 +27,13 @@ data class Caregiver(
     val contact: String = "",
 )
 
+/** Whether opening the app needs the phone's biometrics or screen lock, and how soon it locks again. */
+data class AppLockSettings(
+    val enabled: Boolean = false,
+    /** How long the app may be away before it locks again; 0 locks every time it's left. */
+    val afterSeconds: Int = 0,
+)
+
 data class Profile(
     val name: String = "",
     val glucoseUnit: GlucoseUnit = GlucoseUnit.MgDl,
@@ -43,7 +50,10 @@ data class Profile(
     ),
     val remindersEnabled: Boolean = true,
     val caregiver: Caregiver = Caregiver(),
+    val appLock: AppLockSettings = AppLockSettings(),
     val onboarded: Boolean = false,
+    /** Whether the person has finished or skipped the app tour. */
+    val tourCompleted: Boolean = false,
 ) {
     val firstName: String get() = name.trim().substringBefore(' ')
 

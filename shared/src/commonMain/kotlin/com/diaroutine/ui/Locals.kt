@@ -13,6 +13,9 @@ import com.diaroutine.ui.theme.Spacing
 
 val LocalPlatform = staticCompositionLocalOf<PlatformServices> { error("PlatformServices not provided") }
 
+/** On tablets the app is a centred column no wider than this, rather than stretched edge to edge. */
+val MaxContentWidth = 720.dp
+
 /** Height the floating navigation bar takes, including its margin. */
 val NavBarClearance = 88.dp
 

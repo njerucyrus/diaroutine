@@ -22,7 +22,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -57,6 +56,7 @@ import com.diaroutine.ui.components.PillStyle
 import com.diaroutine.ui.components.SegmentedTabs
 import com.diaroutine.ui.components.Stepper
 import com.diaroutine.ui.components.TimePickerDialog
+import com.diaroutine.ui.components.diaSwitchColors
 import com.diaroutine.ui.icon
 import com.diaroutine.ui.theme.DiaShapes
 import com.diaroutine.ui.theme.DiaTheme
@@ -170,7 +170,7 @@ fun MedicationEditorSheet(
             Switch(
                 checked = trackSupply,
                 onCheckedChange = { trackSupply = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary),
+                colors = diaSwitchColors(),
             )
         }
         if (trackSupply) {

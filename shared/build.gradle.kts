@@ -52,6 +52,7 @@ kotlin {
             "kotlinx.coroutines.FlowPreview",
             "androidx.compose.material3.ExperimentalMaterial3Api",
             "androidx.compose.foundation.layout.ExperimentalLayoutApi",
+            "androidx.compose.ui.ExperimentalComposeUiApi",
         )
     }
 
@@ -62,6 +63,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.material3)
+            implementation(libs.navigationevent.compose)
             implementation(libs.compose.material.icons)
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.lifecycle.runtime.compose)

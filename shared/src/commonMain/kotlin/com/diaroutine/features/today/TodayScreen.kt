@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,6 +97,9 @@ import com.diaroutine.ui.theme.DiaShapes
 import com.diaroutine.ui.theme.DiaTheme
 import com.diaroutine.ui.theme.Spacing
 import com.diaroutine.ui.title
+import com.diaroutine.ui.tour.LocalTour
+import com.diaroutine.ui.tour.TourTarget
+import com.diaroutine.ui.tour.tourTarget
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
@@ -122,6 +126,20 @@ fun TodayScreen(
     var editingActivity by remember { mutableStateOf(false) }
     val entries = state.plan?.entries.orEmpty()
     val attention = if (state.isToday) state.plan?.summary?.needsAttention ?: 0 else 0
+    val tour = LocalTour.current
+    val tourTarget = tour?.current?.target
+
+    // Bring each tour stop into view: the timeline sits below the fold, the rest at the top.
+    LaunchedEffect(tourTarget) {
+        when (tourTarget) {
+            TourTarget.Timeline -> {
+                val header = listState.layoutInfo.totalItemsCount - entries.size.coerceAtLeast(1) - 1
+                listState.animateScrollToItem(header.coerceAtLeast(0))
+            }
+            TourTarget.Days, TourTarget.Summary, TourTarget.QuickTiles, TourTarget.Bell -> listState.animateScrollToItem(0)
+            TourTarget.NavBar, null -> Unit
+        }
+    }
 
     fun openGlucose(time: LocalTime? = null, context: MealContext? = null) {
         val at = time ?: if (state.isToday) state.now.time else LocalTime(12, 0)
@@ -137,6 +155,7 @@ fun TodayScreen(
             GreetingHeader(
                 profile = state.profile,
                 attention = attention,
+                bellModifier = Modifier.tourTarget(tour, TourTarget.Bell),
                 onBell = {
                     // The timeline is always last, so its rows index back from the end.
                     val first = entries.indexOfFirst { it.state.needsAttention }
@@ -162,15 +181,24 @@ fun TodayScreen(
             }
         }
         item(key = "days") {
-            DayStrip(state.days, state.selectedDate, state.today, onSelect = { onAction(TodayAction.SelectDate(it)) })
+            DayStrip(
+                days = state.days,
+                selected = state.selectedDate,
+                today = state.today,
+                onSelect = { onAction(TodayAction.SelectDate(it)) },
+                modifier = Modifier.tourTarget(tour, TourTarget.Days),
+            )
         }
         val plan = state.plan
         if (plan != null) {
-            padded("summary", top = Spacing.lg) { SummaryCard(state, plan.summary, use24Hour) }
+            padded("summary", top = Spacing.lg) {
+                SummaryCard(state, plan.summary, use24Hour, Modifier.tourTarget(tour, TourTarget.Summary))
+            }
         }
         padded("quick") {
             QuickStats(
                 state = state,
+                modifier = Modifier.tourTarget(tour, TourTarget.QuickTiles),
                 onGlucose = { openGlucose() },
                 onWater = { onAction(TodayAction.AddWater(1)) },
                 onActivity = { editingActivity = true },
@@ -194,6 +222,7 @@ fun TodayScreen(
         if (entries.isEmpty()) {
             padded("timeline-empty") {
                 EmptyState(
+                    modifier = Modifier.tourTarget(tour, TourTarget.Timeline),
                     icon = Icons.Rounded.WbSunny,
                     title = "Nothing planned",
                     message = "Medications, glucose checks, your walk and appointments for ${Fmt.relativeDate(state.selectedDate, state.today).lowercase()} will show up here.",
@@ -210,7 +239,9 @@ fun TodayScreen(
                     onAction = onAction,
                     onLogGlucose = { check -> openGlucose(check.plan?.time?.takeUnless { state.isToday }, check.plan?.context) },
                     onLogActivity = { editingActivity = true },
-                    modifier = Modifier.padding(horizontal = Spacing.screen),
+                    modifier = Modifier
+                        .padding(horizontal = Spacing.screen)
+                        .then(if (index == 0) Modifier.tourTarget(tour, TourTarget.Timeline) else Modifier),
                 )
             }
         }
@@ -249,7 +280,7 @@ private fun LazyListScope.padded(
 }
 
 @Composable
-private fun GreetingHeader(profile: Profile, attention: Int, onBell: () -> Unit) {
+private fun GreetingHeader(profile: Profile, attention: Int, onBell: () -> Unit, bellModifier: Modifier = Modifier) {
     val colors = DiaTheme.colors
     Row(Modifier.fillMaxWidth().padding(bottom = Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
         Row(
@@ -281,16 +312,24 @@ private fun GreetingHeader(profile: Profile, attention: Int, onBell: () -> Unit)
             contentDescription = if (attention > 0) "$attention ${if (attention == 1) "item needs" else "items need"} attention. Show on timeline" else "Show timeline",
             onClick = onBell,
             badge = attention,
+            modifier = bellModifier,
         )
     }
 }
 
 @Composable
-private fun DayStrip(days: List<LocalDate>, selected: LocalDate, today: LocalDate, onSelect: (LocalDate) -> Unit) {
+private fun DayStrip(
+    days: List<LocalDate>,
+    selected: LocalDate,
+    today: LocalDate,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = DiaTheme.colors
     val todayIndex = days.indexOf(today).coerceAtLeast(0)
     val stripState = rememberLazyListState(initialFirstVisibleItemIndex = (todayIndex - 2).coerceAtLeast(0))
     LazyRow(
+        modifier = modifier,
         state = stripState,
         contentPadding = PaddingValues(horizontal = Spacing.screen),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -319,7 +358,7 @@ private fun DayStrip(days: List<LocalDate>, selected: LocalDate, today: LocalDat
 }
 
 @Composable
-private fun SummaryCard(state: TodayUiState, summary: DaySummary, use24Hour: Boolean) {
+private fun SummaryCard(state: TodayUiState, summary: DaySummary, use24Hour: Boolean, modifier: Modifier = Modifier) {
     val colors = DiaTheme.colors
     val next = summary.next
     val (headline, detail) = when {
@@ -336,7 +375,7 @@ private fun SummaryCard(state: TodayUiState, summary: DaySummary, use24Hour: Boo
         next != null -> "Next: ${next.title}" to "At ${Fmt.time(next.time, use24Hour)} · ${summary.planned - summary.done} left today"
         else -> "${summary.done} of ${summary.planned} done" to "Keep going."
     }
-    DiaCard(Modifier.fillMaxWidth()) {
+    DiaCard(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
             ProgressRing(
                 progress = summary.progress,
@@ -367,12 +406,18 @@ private fun SummaryCard(state: TodayUiState, summary: DaySummary, use24Hour: Boo
 }
 
 @Composable
-private fun QuickStats(state: TodayUiState, onGlucose: () -> Unit, onWater: () -> Unit, onActivity: () -> Unit) {
+private fun QuickStats(
+    state: TodayUiState,
+    onGlucose: () -> Unit,
+    onWater: () -> Unit,
+    onActivity: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val profile = state.profile
     val unit = profile.glucoseUnit
     val reading = state.latestReading
     val enabled = !state.isFuture
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         QuickTile(
             icon = Icons.Rounded.Bloodtype,
             value = reading?.let { Glucose.format(it.mgDl, unit) } ?: "—",

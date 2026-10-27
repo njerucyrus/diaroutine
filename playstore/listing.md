@@ -61,8 +61,9 @@ CAREGIVER MODE
 PRIVATE BY DESIGN
 • No account, no ads, no tracking
 • Your health information stays on your phone — DiaRoutine has no internet access
+• Optional app lock with your fingerprint, face or screen lock
 
-Comfortable in light and dark mode, with large touch targets and screen-reader labels throughout.
+A short welcome and guided tour show you around. Comfortable in light and dark mode, with large touch targets and screen-reader labels throughout.
 
 IMPORTANT
 DiaRoutine is an organizer for the routine your healthcare team gives you. It is not a medical device and does not provide medical advice, diagnosis or treatment. Always follow your healthcare professional's instructions. In an emergency, contact your local emergency services.
@@ -74,9 +75,12 @@ DiaRoutine is an organizer for the routine your healthcare team gives you. It is
 |---|---|---|
 | App icon | `icon-512.png` | 512 × 512 PNG |
 | Feature graphic | `feature-graphic.png` | 1024 × 500 PNG |
-| Phone screenshots | `screenshots/01-…06-*.png` | 6 × 1080 × 1920 PNG, 9:16, in this order |
+| Phone screenshots | `screenshots/phone/01…07` | 7 × 1080 × 1920 PNG (9:16) |
+| 7-inch tablet screenshots | `screenshots/tablet-7in/01…07` | 7 × 1200 × 1920 PNG (10:16) |
+| 10-inch tablet screenshots | `screenshots/tablet-10in/01…07` | 7 × 1600 × 2560 PNG (10:16) |
 
-Tablet screenshots are optional; skip them for now.
+Upload each set in file order. On tablets the app shows as a centred column (max 720 dp),
+which is what the tablet screenshots show.
 
 ---
 
@@ -135,6 +139,7 @@ what the user enters. (The disclaimer is shown during onboarding, in Profile →
 - `POST_NOTIFICATIONS` — reminders
 - `SCHEDULE_EXACT_ALARM` — optional on-time medication reminders, granted by the user in system settings (core functionality)
 - `RECEIVE_BOOT_COMPLETED` — re-arm reminders after a restart
+- `USE_BIOMETRIC` / `USE_FINGERPRINT` (added by androidx.biometric) — optional app lock; the system verifies, the app only gets success or failure
 
 ---
 
@@ -152,7 +157,8 @@ First release of DiaRoutine:
 • Water, steps and activity tracking
 • Appointment and refill reminders
 • Weekly summary with streaks, and caregiver sharing
-• Light and dark themes. No account, no ads, no tracking.
+• Optional app lock with fingerprint, face or screen lock
+• Welcome screens and a guided tour
 ```
 
 **Upload**: `androidApp/build/outputs/bundle/release/androidApp-release.aab`

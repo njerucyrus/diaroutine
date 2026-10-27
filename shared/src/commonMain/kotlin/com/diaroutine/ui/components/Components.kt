@@ -32,6 +32,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -466,6 +468,20 @@ fun FormField(
             focusedLabelColor = colors.primaryStrong,
             cursorColor = colors.primary,
         ),
+    )
+}
+
+/** Switch colours that stay legible on cards when off, not just when on. */
+@Composable
+fun diaSwitchColors(): SwitchColors {
+    val colors = DiaTheme.colors
+    return SwitchDefaults.colors(
+        checkedThumbColor = colors.onPrimary,
+        checkedTrackColor = colors.primary,
+        checkedBorderColor = colors.primary,
+        uncheckedThumbColor = colors.textMuted,
+        uncheckedTrackColor = colors.raised,
+        uncheckedBorderColor = colors.textMuted,
     )
 }
 

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.ContactPhone
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FamilyRestroom
+import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.HealthAndSafety
 import androidx.compose.material.icons.rounded.Notifications
@@ -37,7 +38,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +62,7 @@ import com.diaroutine.domain.model.GlucoseCheckPlan
 import com.diaroutine.domain.model.GlucoseUnit
 import com.diaroutine.domain.model.MealContext
 import com.diaroutine.domain.model.Profile
+import com.diaroutine.platform.LockAvailability
 import com.diaroutine.ui.LocalPlatform
 import com.diaroutine.ui.components.ChoiceChip
 import com.diaroutine.ui.components.DiaCard
@@ -75,6 +76,7 @@ import com.diaroutine.ui.components.StatusLabel
 import com.diaroutine.ui.components.Stepper
 import com.diaroutine.ui.components.TextEntryDialog
 import com.diaroutine.ui.components.TimePickerDialog
+import com.diaroutine.ui.components.diaSwitchColors
 import com.diaroutine.ui.screenPadding
 import com.diaroutine.ui.suggestedMealContext
 import com.diaroutine.ui.theme.DiaShapes
@@ -83,14 +85,14 @@ import com.diaroutine.ui.theme.Spacing
 import kotlinx.datetime.LocalTime
 
 @Composable
-fun ProfileRoute(container: AppContainer) {
+fun ProfileRoute(container: AppContainer, onStartTour: () -> Unit) {
     val viewModel = viewModel { ProfileViewModel(container) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LifecycleResumeEffect(Unit) {
         viewModel.onAction(ProfileAction.RefreshAccess)
         onPauseOrDispose { }
     }
-    ProfileScreen(state, viewModel::onAction)
+    ProfileScreen(state, viewModel::onAction, onStartTour)
 }
 
 /** Which text the edit dialog is open for. */
@@ -103,7 +105,7 @@ private sealed interface TimeTarget {
 }
 
 @Composable
-fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit) {
+fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit, onStartTour: () -> Unit) {
     val profile = state.profile
     val use24Hour = LocalPlatform.current.uses24HourClock
     var editingText by remember { mutableStateOf<TextField?>(null) }
@@ -128,6 +130,7 @@ fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit) {
         }
         item(key = "goals") { GoalsCard(profile, use24Hour, update, onPickWalkTime = { pickingTime = TimeTarget.Walk }) }
         item(key = "reminders") { RemindersCard(state, update, onAction) }
+        item(key = "lock") { AppLockCard(state, onAction) }
         item(key = "caregiver") {
             CaregiverCard(
                 profile = profile,
@@ -138,7 +141,7 @@ fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit) {
             )
         }
         item(key = "premium") { PremiumCard() }
-        item(key = "about") { AboutCard(state.appVersion, onAction) }
+        item(key = "about") { AboutCard(state.appVersion, onAction, onStartTour) }
     }
 
     editingText?.let { field ->
@@ -373,7 +376,7 @@ private fun GoalsCard(profile: Profile, use24Hour: Boolean, update: ((Profile) -
             Switch(
                 checked = profile.walkTime != null,
                 onCheckedChange = { on -> update { it.copy(walkTime = if (on) LocalTime(18, 0) else null) } },
-                colors = SwitchDefaults.colors(checkedTrackColor = colors.primary),
+                colors = diaSwitchColors(),
             )
         }
         profile.walkTime?.let { time ->
@@ -402,7 +405,7 @@ private fun RemindersCard(state: ProfileUiState, update: ((Profile) -> Profile) 
                 Switch(
                     checked = profile.remindersEnabled,
                     onCheckedChange = { on -> update { it.copy(remindersEnabled = on) } },
-                    colors = SwitchDefaults.colors(checkedTrackColor = colors.primary),
+                    colors = diaSwitchColors(),
                 )
             },
         )
@@ -455,6 +458,59 @@ private fun AccessRow(
     }
 }
 
+private val LockDelays = listOf(0 to "Immediately", 60 to "After 1 minute", 5 * 60 to "After 5 minutes")
+
+@Composable
+private fun AppLockCard(state: ProfileUiState, onAction: (ProfileAction) -> Unit) {
+    val colors = DiaTheme.colors
+    val lock = state.profile.appLock
+    val availability = state.lockAvailability
+    DiaCard(Modifier.fillMaxWidth()) {
+        CardTitle(
+            icon = Icons.Rounded.Fingerprint,
+            title = "App lock",
+            subtitle = "Ask for your fingerprint, face or screen lock to open DiaRoutine",
+            trailing = {
+                Switch(
+                    checked = lock.enabled,
+                    // Always allowed to turn off; turning on needs something to verify with.
+                    enabled = lock.enabled || availability == LockAvailability.Available,
+                    onCheckedChange = { onAction(ProfileAction.SetAppLock(it)) },
+                    colors = diaSwitchColors(),
+                )
+            },
+        )
+        when {
+            lock.enabled -> {
+                Text("Lock again after leaving the app", style = MaterialTheme.typography.titleSmall, color = colors.text)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    LockDelays.forEach { (seconds, label) ->
+                        ChoiceChip(label, selected = lock.afterSeconds == seconds, onClick = { onAction(ProfileAction.SetLockDelay(seconds)) })
+                    }
+                }
+            }
+            availability == LockAvailability.NoScreenLock -> AccessRow(
+                title = "Screen lock needed",
+                granted = false,
+                grantedText = "",
+                deniedText = "Set a PIN, pattern or password on your phone first",
+                actionLabel = "Settings",
+                onAction = { onAction(ProfileAction.OpenSecuritySettings) },
+            )
+            availability == LockAvailability.Unsupported -> Text(
+                "This phone doesn't support app lock.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
+        Text(
+            "Your fingerprint and face are checked by your phone. DiaRoutine never sees them.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+        )
+    }
+}
+
 @Composable
 private fun CaregiverCard(
     profile: Profile,
@@ -474,7 +530,7 @@ private fun CaregiverCard(
                 Switch(
                     checked = caregiver.enabled,
                     onCheckedChange = { on -> update { it.copy(caregiver = it.caregiver.copy(enabled = on)) } },
-                    colors = SwitchDefaults.colors(checkedTrackColor = colors.primary),
+                    colors = diaSwitchColors(),
                 )
             },
         )
@@ -526,7 +582,7 @@ private fun PremiumCard() {
 }
 
 @Composable
-private fun AboutCard(version: String, onAction: (ProfileAction) -> Unit) {
+private fun AboutCard(version: String, onAction: (ProfileAction) -> Unit, onStartTour: () -> Unit) {
     val colors = DiaTheme.colors
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.xs), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -540,6 +596,9 @@ private fun AboutCard(version: String, onAction: (ProfileAction) -> Unit) {
             color = colors.textMuted,
         )
         FlowRow {
+            TextButton(onClick = onStartTour) {
+                Text("Take the app tour", color = colors.primaryStrong)
+            }
             TextButton(onClick = { onAction(ProfileAction.OpenLink(AppLinks.PRIVACY_POLICY)) }) {
                 Text("Privacy policy", color = colors.primaryStrong)
             }

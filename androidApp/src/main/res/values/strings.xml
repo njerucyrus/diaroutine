@@ -6,4 +6,6 @@
     <string name="channel_routine">Routine reminders</string>
     <string name="channel_routine_description">Glucose checks, walks, appointments and refills</string>
     <string name="action_mark_taken">Mark as taken</string>
+    <string name="verify_title">Verify it\'s you</string>
+    <string name="verify_subtitle">Use your fingerprint, face or screen lock</string>
 </resources>

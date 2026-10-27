@@ -9,8 +9,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.text.format.DateFormat
+import androidx.biometric.BiometricManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
+import com.diaroutine.platform.LockAvailability
 import com.diaroutine.platform.PlatformServices
 import com.diaroutine.platform.ReminderAccess
 
@@ -20,6 +22,9 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
 
     /** Set by the visible activity, which is the only thing that can show a permission prompt. */
     var permissionRequester: (() -> Unit)? = null
+
+    /** Set by the visible activity, which hosts the system's biometric prompt. */
+    var authenticator: (((Boolean) -> Unit) -> Unit)? = null
 
     override val uses24HourClock: Boolean
         get() = DateFormat.is24HourFormat(context)
@@ -95,7 +100,26 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
         )
     }
 
-    private companion object {
-        const val KEY_ASKED = "notification_permission_asked"
+    override fun lockAvailability(): LockAvailability =
+        when (BiometricManager.from(context).canAuthenticate(LOCK_AUTHENTICATORS)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> LockAvailability.Available
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> LockAvailability.NoScreenLock
+            else -> LockAvailability.Unsupported
+        }
+
+    override fun authenticate(onResult: (Boolean) -> Unit) {
+        val prompt = authenticator ?: return onResult(false)
+        prompt(onResult)
+    }
+
+    override fun openSecuritySettings() {
+        start(Intent(Settings.ACTION_SECURITY_SETTINGS))
+    }
+
+    companion object {
+        private const val KEY_ASKED = "notification_permission_asked"
+
+        /** Fingerprint or face, with the phone's PIN, pattern or password as the fallback. */
+        const val LOCK_AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
     }
 }
