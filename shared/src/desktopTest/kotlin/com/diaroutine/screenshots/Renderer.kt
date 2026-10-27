@@ -39,6 +39,8 @@ import com.diaroutine.ui.tour.TourController
 import com.diaroutine.ui.tour.TourOverlay
 import com.diaroutine.ui.tour.TourTarget
 import com.diaroutine.ui.tour.tourTarget
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.setMain
 import org.jetbrains.skia.EncodedImageFormat
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
@@ -72,6 +74,8 @@ fun renderScreen(
     tour: TourController? = null,
     content: @Composable () -> Unit,
 ): BufferedImage {
+    // Screens collect state with the lifecycle, which runs on Main; a JVM test has none.
+    Dispatchers.setMain(Dispatchers.Unconfined)
     val scene = ImageComposeScene(
         width = (widthDp * RENDER_DENSITY).toInt(),
         height = (heightDp * RENDER_DENSITY).toInt(),
@@ -123,6 +127,7 @@ class FakePlatform(
     override fun shareText(subject: String, text: String) = Unit
     override fun openUrl(url: String) = Unit
     override fun composeEmail(address: String, subject: String) = Unit
+    override fun copyText(text: String, sensitive: Boolean) = Unit
     override fun reminderAccess() = ReminderAccess(notificationsAllowed, false, true)
     override fun requestNotificationAccess() = Unit
     override fun openPreciseTimingSettings() = Unit

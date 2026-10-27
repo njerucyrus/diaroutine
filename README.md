@@ -37,8 +37,8 @@ androidApp/       Application, MainActivity, alarms + notifications, receivers
 ```
 
 Screens take immutable UI state and send actions; ViewModels combine repository
-flows into that state. Everything is stored locally in Room — nothing leaves the
-device unless the person shares a summary themselves.
+flows into that state. Everything is stored locally in Room. Nothing leaves the device unless the person shares a
+summary themselves or turns on the encrypted backup.
 
 ## First run, tour and app lock
 
@@ -55,6 +55,20 @@ device unless the person shares a summary themselves.
 
 The database is at version 2 (lock and tour settings on the profile), reached from version 1
 by a Room auto-migration; schemas are in `shared/schemas/`.
+
+## Premium and backup
+
+DiaRoutine Premium is a Google Play subscription (`diaroutine_premium`, monthly and yearly) with a
+3-month free trial. It adds:
+
+- **Encrypted Google Drive backup** (`backup/`, `androidApp/.../backup`): weekly and on demand,
+  encrypted on the phone with a recovery key only the person holds. Restoring is always free.
+- **Missed-dose follow-ups** (`ReminderPlanner`): reminded again every 15/30/60 minutes, up to twice,
+  until a dose is answered — plus a 10-minute snooze on dose notifications.
+- **30- and 90-day insights** (`Report`, `ReportPeriod`).
+
+The store and Drive setup steps are in [playstore/setup.md](playstore/setup.md). Debug builds have
+a "simulate Premium" switch in the paywall for trying the features before products exist.
 
 ## Reminders
 

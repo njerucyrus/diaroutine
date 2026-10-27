@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Privacy Policy · DiaRoutine</title>
-  <meta name="description" content="How DiaRoutine handles your information: everything you enter stays on your phone. No account, no internet access, no ads or tracking.">
+  <meta name="description" content="How DiaRoutine handles your information: it stays on your phone, and optional backups are encrypted so only you can read them. No account, no ads, no tracking.">
   <link rel="icon" type="image/png" href="assets/img/favicon.png">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
   <link rel="stylesheet" href="assets/site.css">
@@ -35,8 +35,9 @@
       <h2>The short version</h2>
       <ul>
         <li><strong>Your information stays on your phone.</strong> We never receive, see, sell or share it.</li>
-        <li><strong>No account.</strong> You never sign up or sign in.</li>
-        <li><strong>No internet access.</strong> The app does not have Android’s permission to connect to the internet.</li>
+        <li><strong>Backups only you can read.</strong> If you turn on backup (Premium), your data is encrypted on your phone
+          before it goes to your own Google Drive. Only your recovery key can unlock it — not us, not Google.</li>
+        <li><strong>No account with us.</strong> You never sign up or sign in to DiaRoutine.</li>
         <li><strong>No ads, analytics or tracking.</strong> The app contains no advertising, analytics or crash-reporting tools.</li>
         <li><strong>You decide what is shared.</strong> Information leaves the app only when you tap Share and choose where to send it.</li>
       </ul>
@@ -48,6 +49,8 @@
         <li><a href="#what-you-enter">Information you enter</a></li>
         <li><a href="#where-stored">Where it is stored</a></li>
         <li><a href="#we-collect">What we collect</a></li>
+        <li><a href="#backup">Encrypted backup to Google Drive</a></li>
+        <li><a href="#purchases">Premium and purchases</a></li>
         <li><a href="#sharing">When information leaves the app</a></li>
         <li><a href="#permissions">Permissions</a></li>
         <li><a href="#security">Security</a></li>
@@ -82,19 +85,17 @@
       this storage separate from other apps, so they cannot read it.
     </p>
     <p>
-      DiaRoutine is excluded from Android’s cloud backup and device-to-device transfer, so your
-      information is <strong>not</strong> copied to Google Drive or to another phone. This keeps it under your
-      control, but it also means:
+      DiaRoutine is excluded from Android’s own cloud backup and device-to-device transfer. Unless you turn on
+      DiaRoutine’s encrypted backup (section 4), uninstalling the app or clearing its storage permanently deletes your
+      information, and moving to a new phone does not bring it with you.
     </p>
-    <ul>
-      <li>uninstalling the app or clearing its storage permanently deletes your information; and</li>
-      <li>moving to a new phone does not bring your information with it.</li>
-    </ul>
 
     <h2 id="we-collect">3. What we collect</h2>
     <p>
       <strong>Nothing.</strong> We do not collect personal information, health information, device
-      identifiers, location, usage statistics or crash reports. The app has no servers to send them to.
+      identifiers, location, usage statistics or crash reports. DiaRoutine has no servers of ours to send them to.
+      The only times the app connects to the internet are for the optional encrypted backup (section 4) and for
+      Google Play purchases (section 5).
     </p>
     <p>
       When you download DiaRoutine, Google Play processes information under
@@ -102,7 +103,48 @@
       we receive your email address and whatever you write, and use it only to reply to you.
     </p>
 
-    <h2 id="sharing">4. When information leaves the app</h2>
+    <h2 id="backup">4. Encrypted backup to Google Drive</h2>
+    <p>
+      Backup is optional and part of DiaRoutine Premium. When you turn it on:
+    </p>
+    <ul>
+      <li>
+        <strong>Your data is encrypted on your phone</strong> before it leaves, with AES-256 encryption and a key
+        derived from a <strong>recovery key</strong> that DiaRoutine creates for you and shows you once. The recovery
+        key is kept on your phone protected by the Android Keystore, so weekly backups can run on their own. It is never
+        sent to us or to Google.
+      </li>
+      <li>
+        <strong>The encrypted file is stored in your own Google Drive</strong>, in a hidden folder that only DiaRoutine
+        can use. The app asks Google only for access to that folder — it cannot see or change any of your other Drive
+        files. Google stores the file under <a href="https://policies.google.com/privacy" rel="noopener">Google’s Privacy Policy</a>,
+        but cannot read it.
+      </li>
+      <li>
+        <strong>It runs weekly</strong> on Wi-Fi or mobile data, and whenever you tap “Back up now”. Each backup replaces
+        the previous one. The app shows your Google account’s email address so you can see where backups go; it reads
+        this from Google and keeps it only on your phone.
+      </li>
+      <li>
+        <strong>Only your recovery key can restore it.</strong> If you lose the key, the backup cannot be opened by
+        anyone, including us — we cannot reset or recover it.
+      </li>
+    </ul>
+    <p>
+      You can turn backup off, show your recovery key, or delete the backup from Drive at any time in
+      Profile → Backup &amp; restore. You can also remove it from Google Drive’s settings under
+      <em>Manage apps</em> → DiaRoutine → <em>Delete hidden app data</em>.
+    </p>
+
+    <h2 id="purchases">5. Premium and purchases</h2>
+    <p>
+      DiaRoutine Premium is a subscription sold through Google Play. Google handles the payment, the free trial and
+      cancellations under its own terms and privacy policy. On your phone, the app receives only Google Play’s
+      confirmation that you have an active subscription, and remembers it so Premium works offline. We never receive
+      your payment details.
+    </p>
+
+    <h2 id="sharing">6. When information leaves the app</h2>
     <p>Information leaves DiaRoutine only when you choose:</p>
     <ul>
       <li>
@@ -118,19 +160,20 @@
     </ul>
     <p>We do not sell your information, and we do not share it with advertisers or data brokers.</p>
 
-    <h2 id="permissions">5. Permissions</h2>
+    <h2 id="permissions">7. Permissions</h2>
     <table>
       <thead><tr><th scope="col">Permission</th><th scope="col">Why</th></tr></thead>
       <tbody>
+        <tr><td>Internet</td><td>Only to back up to and restore from your Google Drive, if you turn backup on, and for Google Play purchases</td></tr>
         <tr><td>Notifications</td><td>To show reminders for doses, glucose checks, walks, appointments and refills</td></tr>
         <tr><td>Alarms &amp; reminders (optional)</td><td>Lets reminders arrive on the minute instead of a few minutes late; you can allow it in the app’s Profile screen</td></tr>
         <tr><td>Run at startup</td><td>To set your reminders again after your phone restarts or its time or time zone changes</td></tr>
         <tr><td>Biometrics (optional)</td><td>Lets you unlock the app with your fingerprint, face or screen lock if you turn on app lock. Your phone does the checking: DiaRoutine only learns whether it succeeded and never receives fingerprint or face data</td></tr>
       </tbody>
     </table>
-    <p>DiaRoutine does not request internet access, location, camera, microphone, contacts, photos or files.</p>
+    <p>DiaRoutine does not request location, camera, microphone, contacts, photos or files.</p>
 
-    <h2 id="security">6. Security</h2>
+    <h2 id="security">8. Security</h2>
     <p>
       Your information is protected by Android’s app sandbox. To keep it private, use a screen lock on your phone, and
       consider turning on DiaRoutine’s app lock in Profile, which asks for your fingerprint, face or screen lock each
@@ -139,33 +182,33 @@
       content in your phone’s notification settings.
     </p>
 
-    <h2 id="choices">7. Your choices and rights</h2>
+    <h2 id="choices">9. Your choices and rights</h2>
     <ul>
       <li><strong>Edit or delete entries</strong> at any time in the app.</li>
       <li><strong>Turn reminders off</strong> in Profile, or change notification settings in Android.</li>
-      <li><strong>Delete everything</strong> from Settings → Apps → DiaRoutine → Storage → Clear storage (called “Clear data” on some phones), or by uninstalling the app.</li>
+      <li><strong>Delete everything</strong> on your phone from Settings → Apps → DiaRoutine → Storage → Clear storage (called “Clear data” on some phones), or by uninstalling the app.</li>
+      <li><strong>Delete your backup</strong> from Profile → Backup &amp; restore, or from Google Drive’s settings.</li>
     </ul>
     <p>
       Data protection laws such as the EU and UK GDPR, Kenya’s Data Protection Act 2019 and the California
       Consumer Privacy Act give you rights over personal data an organisation holds about you. Because we hold no
-      data about you, there is nothing for us to access, correct, export or delete — your information is entirely
-      on your device. If you have questions, contact us and we will help.
+      data about you, there is nothing for us to access, correct, export or delete — your information is on your
+      device and, if you use backup, encrypted in your own Google Drive where you control it. If you have questions, contact us and we will help.
     </p>
 
-    <h2 id="children">8. Children</h2>
+    <h2 id="children">10. Children</h2>
     <p>
       DiaRoutine is not directed to children under 13. Younger people managing diabetes should use it with a parent
       or guardian. We do not knowingly collect information from anyone, including children.
     </p>
 
-    <h2 id="changes">9. Changes to this policy</h2>
+    <h2 id="changes">11. Changes to this policy</h2>
     <p>
-      If we change how DiaRoutine handles information — for example, by adding optional cloud backup — we will update
-      this policy and its effective date before the change takes effect, and ask for your permission in the app before
-      any of your information leaves your device.
+      If we change how DiaRoutine handles information, we will update this policy and its effective date before the
+      change takes effect, and ask for your permission in the app before any new kind of information leaves your device.
     </p>
 
-    <h2 id="contact">10. Contact us</h2>
+    <h2 id="contact">12. Contact us</h2>
     <p>
       Hudutech Solutions<br>
       Email: <a href="mailto:coolnjeru@gmail.com">coolnjeru@gmail.com</a>

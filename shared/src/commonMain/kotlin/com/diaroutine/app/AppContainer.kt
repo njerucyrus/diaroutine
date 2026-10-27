@@ -1,5 +1,7 @@
 package com.diaroutine.app
 
+import com.diaroutine.backup.BackupCodec
+import com.diaroutine.backup.CloudBackup
 import com.diaroutine.core.time.plusDays
 import com.diaroutine.core.time.startIn
 import com.diaroutine.core.time.ticker
@@ -12,9 +14,11 @@ import com.diaroutine.data.db.AppDatabase
 import com.diaroutine.domain.ExampleRoutine
 import com.diaroutine.domain.ReminderPlanner
 import com.diaroutine.domain.RoutineSnapshot
-import com.diaroutine.domain.WeeklyReport
+import com.diaroutine.domain.Report
+import com.diaroutine.domain.ReportPeriod
 import com.diaroutine.domain.model.GlucoseUnit
 import com.diaroutine.platform.PlatformServices
+import com.diaroutine.premium.PremiumStore
 import com.diaroutine.platform.ReminderScheduler
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +52,8 @@ class AppContainer(
     database: AppDatabase,
     val platform: PlatformServices,
     private val reminderScheduler: ReminderScheduler,
+    val premium: PremiumStore,
+    cloudBackup: (BackupCodec) -> CloudBackup,
     val clock: Clock = Clock.System,
 ) {
     /** Read each time so a change of time zone is picked up. */
@@ -63,6 +69,9 @@ class AppContainer(
     val appointments = AppointmentRepository(database.appointmentDao())
 
     val appLock = AppLock(clock)
+
+    val backupCodec = BackupCodec(database.backupDao(), clock, platform.appVersion)
+    val backup: CloudBackup = cloudBackup(backupCodec)
 
     init {
         // On the main thread, alongside the platform's shown/hidden calls.
@@ -108,11 +117,11 @@ class AppContainer(
 
     suspend fun completeTour() = profile.update { it.copy(tourCompleted = true) }
 
-    /** The past week as text, for the person to send wherever they choose. */
-    suspend fun weeklySummaryText(): String {
+    /** The summary for [period] as text, for the person to send wherever they choose. */
+    suspend fun summaryText(period: ReportPeriod = ReportPeriod.Week): String {
         val now = now()
-        val snapshot = snapshot(now.date.plusDays(-(WeeklyReport.HISTORY_DAYS - 1)), now.date).first()
-        return WeeklyReport.text(snapshot, WeeklyReport.figures(snapshot, now, timeZone))
+        val snapshot = snapshot(now.date.plusDays(-(Report.snapshotDays(period) - 1)), now.date).first()
+        return Report.text(snapshot, Report.figures(snapshot, now, timeZone, period))
     }
 
     private val rescheduling = Mutex()
@@ -123,7 +132,8 @@ class AppContainer(
         val zone = timeZone
         val today = now.toLocalDateTime(zone).date
         val snapshot = snapshot(today, today.plusDays(2)).first()
-        reminderScheduler.replaceAll(ReminderPlanner.plan(now, zone, snapshot, platform.uses24HourClock))
+        val followUps = if (premium.state.value.isPremium) snapshot.profile.followUpMinutes else 0
+        reminderScheduler.replaceAll(ReminderPlanner.plan(now, zone, snapshot, platform.uses24HourClock, followUpMinutes = followUps))
     }
 
     /** Re-plans reminders in the background. Failures are logged, never thrown. */
@@ -155,6 +165,7 @@ class AppContainer(
                 glucose.recent(1),
                 habits.habits(today, today),
                 appointments.all,
+                premium.state,
             ).debounce(500.milliseconds).collectLatest { rescheduleSafely() }
         }
     }

@@ -3,6 +3,7 @@ package com.diaroutine.data.db
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
@@ -107,4 +108,52 @@ interface AppointmentDao {
 
     @Query("DELETE FROM appointments WHERE id = :id")
     suspend fun delete(id: Long)
+}
+
+/** Reads every table for a backup, and swaps them all for a backup's contents in one transaction. */
+@Dao
+abstract class BackupDao {
+    @Query("SELECT * FROM profile") abstract suspend fun profiles(): List<ProfileEntity>
+    @Query("SELECT * FROM medications") abstract suspend fun medications(): List<MedicationEntity>
+    @Query("SELECT * FROM dose_logs") abstract suspend fun doseLogs(): List<DoseLogEntity>
+    @Query("SELECT * FROM glucose_readings") abstract suspend fun readings(): List<GlucoseReadingEntity>
+    @Query("SELECT * FROM daily_habits") abstract suspend fun habits(): List<DailyHabitEntity>
+    @Query("SELECT * FROM appointments") abstract suspend fun appointments(): List<AppointmentEntity>
+
+    @Query("DELETE FROM profile") protected abstract suspend fun clearProfiles()
+    @Query("DELETE FROM medications") protected abstract suspend fun clearMedications()
+    @Query("DELETE FROM dose_logs") protected abstract suspend fun clearDoseLogs()
+    @Query("DELETE FROM glucose_readings") protected abstract suspend fun clearReadings()
+    @Query("DELETE FROM daily_habits") protected abstract suspend fun clearHabits()
+    @Query("DELETE FROM appointments") protected abstract suspend fun clearAppointments()
+
+    @Insert protected abstract suspend fun insertProfiles(rows: List<ProfileEntity>)
+    @Insert protected abstract suspend fun insertMedications(rows: List<MedicationEntity>)
+    @Insert protected abstract suspend fun insertDoseLogs(rows: List<DoseLogEntity>)
+    @Insert protected abstract suspend fun insertReadings(rows: List<GlucoseReadingEntity>)
+    @Insert protected abstract suspend fun insertHabits(rows: List<DailyHabitEntity>)
+    @Insert protected abstract suspend fun insertAppointments(rows: List<AppointmentEntity>)
+
+    @Transaction
+    open suspend fun replaceAll(
+        profiles: List<ProfileEntity>,
+        medications: List<MedicationEntity>,
+        doseLogs: List<DoseLogEntity>,
+        readings: List<GlucoseReadingEntity>,
+        habits: List<DailyHabitEntity>,
+        appointments: List<AppointmentEntity>,
+    ) {
+        clearProfiles()
+        clearMedications()
+        clearDoseLogs()
+        clearReadings()
+        clearHabits()
+        clearAppointments()
+        insertProfiles(profiles)
+        insertMedications(medications)
+        insertDoseLogs(doseLogs)
+        insertReadings(readings)
+        insertHabits(habits)
+        insertAppointments(appointments)
+    }
 }

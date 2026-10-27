@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Medication
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PhonelinkLock
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.MaterialTheme
@@ -111,6 +112,8 @@ enum class OnboardingStep { Intro, Setup, Lock, Reminders }
 fun OnboardingScreen(
     onAuthenticate: ((Boolean) -> Unit) -> Unit,
     onDone: (OnboardingResult) -> Unit,
+    /** Offered on the setup step to people who've used DiaRoutine before. */
+    onRestoreBackup: (() -> Unit)? = null,
     initialStep: OnboardingStep = OnboardingStep.Intro,
     initialSlide: Int = 0,
 ) {
@@ -167,6 +170,7 @@ fun OnboardingScreen(
                 onExample = { example = it },
                 onBack = back,
                 onContinue = next,
+                onRestoreBackup = onRestoreBackup,
             )
             OnboardingStep.Lock -> LockStep(
                 enabled = appLock,
@@ -408,10 +412,21 @@ private fun SetupStep(
     onExample: (Boolean) -> Unit,
     onBack: () -> Unit,
     onContinue: () -> Unit,
+    onRestoreBackup: (() -> Unit)?,
 ) {
     val colors = DiaTheme.colors
     val platform = LocalPlatform.current
     StepLayout(title = "Let's set up your day", body = "You can change any of this later in Profile.", onBack = onBack) {
+        if (onRestoreBackup != null) {
+            PillButton(
+                text = "Used DiaRoutine before? Restore your backup",
+                onClick = onRestoreBackup,
+                style = PillStyle.Raised,
+                leadingIcon = Icons.Rounded.Restore,
+                trailingIcon = null,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         FormField(
             label = "Your first name",
             value = name,

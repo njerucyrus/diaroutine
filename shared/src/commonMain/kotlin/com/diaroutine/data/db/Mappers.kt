@@ -41,6 +41,7 @@ fun ProfileEntity.toDomain(): Profile = Profile(
         GlucoseCheckPlan(timeOfMinute(minute), enumOr(part.substringAfter(':', ""), MealContext.Other))
     }.sortedBy { it.time },
     remindersEnabled = remindersEnabled,
+    followUpMinutes = followUpMinutes,
     caregiver = Caregiver(caregiverEnabled, caregiverName, caregiverContact),
     appLock = AppLockSettings(appLockEnabled, appLockAfterSeconds),
     onboarded = onboarded,
@@ -65,6 +66,7 @@ fun Profile.toEntity(): ProfileEntity = ProfileEntity(
     appLockEnabled = appLock.enabled,
     appLockAfterSeconds = appLock.afterSeconds,
     tourCompleted = tourCompleted,
+    followUpMinutes = followUpMinutes,
 )
 
 fun MedicationEntity.toDomain(): Medication = Medication(

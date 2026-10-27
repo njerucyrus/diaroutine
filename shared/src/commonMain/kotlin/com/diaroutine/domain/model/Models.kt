@@ -49,6 +49,8 @@ data class Profile(
         GlucoseCheckPlan(LocalTime(21, 30), MealContext.Bedtime),
     ),
     val remindersEnabled: Boolean = true,
+    /** Premium: minutes between follow-up reminders for a dose not yet marked taken; 0 for none. */
+    val followUpMinutes: Int = 30,
     val caregiver: Caregiver = Caregiver(),
     val appLock: AppLockSettings = AppLockSettings(),
     val onboarded: Boolean = false,

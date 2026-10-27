@@ -1,10 +1,13 @@
 package com.diaroutine.app
 
 import android.Manifest
+import android.content.Intent
+import android.content.IntentSender
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -25,6 +28,20 @@ class MainActivity : FragmentActivity() {
 
     private val askForNotifications: () -> Unit = {
         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private var pendingConsent: ((Intent?) -> Unit)? = null
+    private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        pendingConsent?.let { callback ->
+            pendingConsent = null
+            callback(result.data)
+        }
+    }
+
+    private val askForDriveConsent: (IntentSender, (Intent?) -> Unit) -> Unit = { sender, onResult ->
+        pendingConsent?.invoke(null)
+        pendingConsent = onResult
+        driveConsent.launch(IntentSenderRequest.Builder(sender).build())
     }
 
     private lateinit var biometricPrompt: BiometricPrompt
@@ -63,8 +80,16 @@ class MainActivity : FragmentActivity() {
         // Permission and biometric prompts need an activity; the shared app asks through the platform services.
         diaRoutine.platform.permissionRequester = askForNotifications
         diaRoutine.platform.authenticator = authenticate
+        diaRoutine.driveAuth.consentLauncher = askForDriveConsent
+        diaRoutine.premium.activity = this
         hideFromRecentsWhileLockIsOn()
         setContent { App(diaRoutine.container) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Purchases can change outside the app (renewed, cancelled, refunded).
+        diaRoutine.premium.refresh()
     }
 
     override fun onStart() {
@@ -83,6 +108,10 @@ class MainActivity : FragmentActivity() {
         val platform = diaRoutine.platform
         if (platform.permissionRequester === askForNotifications) platform.permissionRequester = null
         if (platform.authenticator === authenticate) platform.authenticator = null
+        if (diaRoutine.driveAuth.consentLauncher === askForDriveConsent) diaRoutine.driveAuth.consentLauncher = null
+        if (diaRoutine.premium.activity === this) diaRoutine.premium.activity = null
+        pendingConsent?.invoke(null)
+        pendingConsent = null
         super.onDestroy()
     }
 

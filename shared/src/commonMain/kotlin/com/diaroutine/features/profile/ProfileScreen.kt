@@ -18,16 +18,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.DirectionsWalk
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AddAlarm
 import androidx.compose.material.icons.rounded.Bloodtype
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.ContactPhone
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.HealthAndSafety
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Schedule
@@ -62,6 +60,12 @@ import com.diaroutine.domain.model.GlucoseCheckPlan
 import com.diaroutine.domain.model.GlucoseUnit
 import com.diaroutine.domain.model.MealContext
 import com.diaroutine.domain.model.Profile
+import com.diaroutine.features.backup.BackupCard
+import com.diaroutine.features.backup.BackupViewModel
+import com.diaroutine.features.premium.PaywallSheet
+import com.diaroutine.features.premium.icon
+import com.diaroutine.premium.PremiumFeature
+import com.diaroutine.premium.PremiumState
 import com.diaroutine.platform.LockAvailability
 import com.diaroutine.ui.LocalPlatform
 import com.diaroutine.ui.components.ChoiceChip
@@ -88,11 +92,30 @@ import kotlinx.datetime.LocalTime
 fun ProfileRoute(container: AppContainer, onStartTour: () -> Unit) {
     val viewModel = viewModel { ProfileViewModel(container) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // The same instance the app root uses to show the backup setup and restore sheets.
+    val backup = viewModel { BackupViewModel(container) }
+    val backupState by backup.state.collectAsStateWithLifecycle()
+    var offerPremium by remember { mutableStateOf(false) }
     LifecycleResumeEffect(Unit) {
         viewModel.onAction(ProfileAction.RefreshAccess)
         onPauseOrDispose { }
     }
-    ProfileScreen(state, viewModel::onAction, onStartTour)
+    ProfileScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        onStartTour = onStartTour,
+        onOfferPremium = { offerPremium = true },
+        backupCard = {
+            BackupCard(
+                state = backupState,
+                zone = container.timeZone,
+                onSetUp = backup::startSetup,
+                onOfferPremium = { offerPremium = true },
+                actions = backup,
+            )
+        },
+    )
+    if (offerPremium) PaywallSheet(container.premium, onDismiss = { offerPremium = false })
 }
 
 /** Which text the edit dialog is open for. */
@@ -105,7 +128,13 @@ private sealed interface TimeTarget {
 }
 
 @Composable
-fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit, onStartTour: () -> Unit) {
+fun ProfileScreen(
+    state: ProfileUiState,
+    onAction: (ProfileAction) -> Unit,
+    onStartTour: () -> Unit,
+    onOfferPremium: () -> Unit = {},
+    backupCard: @Composable () -> Unit = {},
+) {
     val profile = state.profile
     val use24Hour = LocalPlatform.current.uses24HourClock
     var editingText by remember { mutableStateOf<TextField?>(null) }
@@ -119,6 +148,7 @@ fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit, onSt
     ) {
         item(key = "header") { ScreenHeader("Profile") }
         item(key = "identity") { IdentityCard(profile, onEdit = { editingText = TextField.Name }) }
+        item(key = "premium") { PremiumCard(state.premium, onOpen = onOfferPremium) }
         item(key = "glucose") {
             GlucoseCard(
                 profile = profile,
@@ -129,8 +159,9 @@ fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit, onSt
             )
         }
         item(key = "goals") { GoalsCard(profile, use24Hour, update, onPickWalkTime = { pickingTime = TimeTarget.Walk }) }
-        item(key = "reminders") { RemindersCard(state, update, onAction) }
+        item(key = "reminders") { RemindersCard(state, update, onAction, onOfferPremium) }
         item(key = "lock") { AppLockCard(state, onAction) }
+        item(key = "backup") { backupCard() }
         item(key = "caregiver") {
             CaregiverCard(
                 profile = profile,
@@ -140,7 +171,6 @@ fun ProfileScreen(state: ProfileUiState, onAction: (ProfileAction) -> Unit, onSt
                 onShare = { onAction(ProfileAction.ShareSummary) },
             )
         }
-        item(key = "premium") { PremiumCard() }
         item(key = "about") { AboutCard(state.appVersion, onAction, onStartTour) }
     }
 
@@ -391,8 +421,15 @@ private fun GoalsCard(profile: Profile, use24Hour: Boolean, update: ((Profile) -
     }
 }
 
+private val FollowUpChoices = listOf(0 to "Off", 15 to "Every 15 min", 30 to "Every 30 min", 60 to "Every hour")
+
 @Composable
-private fun RemindersCard(state: ProfileUiState, update: ((Profile) -> Profile) -> Unit, onAction: (ProfileAction) -> Unit) {
+private fun RemindersCard(
+    state: ProfileUiState,
+    update: ((Profile) -> Profile) -> Unit,
+    onAction: (ProfileAction) -> Unit,
+    onOfferPremium: () -> Unit,
+) {
     val colors = DiaTheme.colors
     val profile = state.profile
     val access = state.access
@@ -427,6 +464,27 @@ private fun RemindersCard(state: ProfileUiState, update: ((Profile) -> Profile) 
                     actionLabel = "Allow",
                     onAction = { onAction(ProfileAction.OpenPreciseTiming) },
                 )
+            }
+            val premium = state.premium.isPremium
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Missed-dose follow-ups", style = MaterialTheme.typography.titleSmall, color = colors.text)
+                    Text(
+                        "Remind me again if a dose isn't marked taken",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                    )
+                }
+                if (!premium) StatusLabel("Premium", Icons.Rounded.Lock, colors.primarySoft, colors.primaryStrong)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FollowUpChoices.forEach { (minutes, label) ->
+                    ChoiceChip(
+                        text = label,
+                        selected = premium && profile.followUpMinutes == minutes,
+                        onClick = { if (premium) update { it.copy(followUpMinutes = minutes) } else onOfferPremium() },
+                    )
+                }
             }
         }
     }
@@ -562,22 +620,36 @@ private fun CaregiverCard(
 }
 
 @Composable
-private fun PremiumCard() {
+private fun PremiumCard(premium: PremiumState, onOpen: () -> Unit) {
     val colors = DiaTheme.colors
     DiaCard(Modifier.fillMaxWidth(), color = colors.primarySoft) {
         CardTitle(
             icon = Icons.Rounded.WorkspacePremium,
             title = "DiaRoutine Premium",
-            trailing = { StatusLabel("Coming soon", null, colors.raised, colors.primaryStrong) },
+            subtitle = when {
+                premium.isPremium -> "Active — thank you for your support"
+                premium.trialOffered -> "Try it free for 3 months"
+                else -> "Backup, follow-ups and longer insights"
+            },
+            trailing = if (premium.isPremium) {
+                { StatusLabel("Active", Icons.Rounded.Check, colors.sageSoft, colors.sage) }
+            } else {
+                null
+            },
         )
-        listOf(
-            Triple(Icons.Rounded.AddAlarm, "Premium reminders", "Follow-up alerts when a dose is missed"),
-            Triple(Icons.Rounded.Group, "Caregiver accounts", "A caregiver follows along from their own phone"),
-            Triple(Icons.Rounded.FamilyRestroom, "More profiles", "Manage routines for family members"),
-            Triple(Icons.Rounded.CloudSync, "Cloud sync", "Back up and sync across your devices"),
-        ).forEach { (icon, title, detail) ->
-            InfoRow(icon = icon, title = title, detail = detail, iconTint = colors.primaryStrong)
+        PremiumFeature.entries.forEach { feature ->
+            InfoRow(icon = feature.icon, title = feature.title, detail = feature.detail, iconTint = colors.primaryStrong)
         }
+        PillButton(
+            text = when {
+                premium.isPremium -> "Manage Premium"
+                premium.trialOffered -> "Start your free trial"
+                else -> "See Premium"
+            },
+            onClick = onOpen,
+            style = if (premium.isPremium) PillStyle.Raised else PillStyle.Filled,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

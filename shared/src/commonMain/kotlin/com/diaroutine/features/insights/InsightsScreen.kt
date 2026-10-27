@@ -2,6 +2,7 @@ package com.diaroutine.features.insights
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,12 +19,15 @@ import androidx.compose.material.icons.rounded.Bloodtype
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.InsertChart
 import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,8 +39,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.diaroutine.app.AppContainer
 import com.diaroutine.core.format.Fmt
 import com.diaroutine.domain.Glucose
-import com.diaroutine.domain.WeeklyFigures
+import com.diaroutine.domain.ReportFigures
+import com.diaroutine.domain.ReportPeriod
+import com.diaroutine.domain.bucketedFromEnd
+import com.diaroutine.features.premium.PaywallSheet
 import com.diaroutine.ui.components.BarDatum
+import com.diaroutine.ui.components.ChoiceChip
 import com.diaroutine.ui.components.CircleIconButton
 import com.diaroutine.ui.components.DiaCard
 import com.diaroutine.ui.components.EmptyState
@@ -58,11 +66,19 @@ import kotlinx.datetime.LocalDate
 fun InsightsRoute(container: AppContainer) {
     val viewModel = viewModel { InsightsViewModel(container) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    InsightsScreen(state, onShare = viewModel::shareSummary)
+    var offerPremium by remember { mutableStateOf(false) }
+    InsightsScreen(
+        state = state,
+        onShare = viewModel::shareSummary,
+        onSelectPeriod = { period ->
+            if (period == ReportPeriod.Week || state.isPremium) viewModel.selectPeriod(period) else offerPremium = true
+        },
+    )
+    if (offerPremium) PaywallSheet(container.premium, onDismiss = { offerPremium = false })
 }
 
 @Composable
-fun InsightsScreen(state: InsightsUiState, onShare: () -> Unit) {
+fun InsightsScreen(state: InsightsUiState, onShare: () -> Unit, onSelectPeriod: (ReportPeriod) -> Unit = {}) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val figures = state.figures
     LazyColumn(
@@ -73,11 +89,24 @@ fun InsightsScreen(state: InsightsUiState, onShare: () -> Unit) {
         item(key = "header") {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 ScreenHeader(
-                    title = "Weekly summary",
-                    trailing = { CircleIconButton(Icons.Rounded.Share, "Share weekly summary", onClick = onShare) },
+                    title = if (state.period == ReportPeriod.Week) "Weekly summary" else "${state.period.days}-day summary",
+                    trailing = { CircleIconButton(Icons.Rounded.Share, "Share this summary", onClick = onShare) },
                 )
                 if (figures != null) {
                     Text(Fmt.dateRange(figures.from, figures.to), style = MaterialTheme.typography.bodyMedium, color = DiaTheme.colors.textMuted)
+                }
+            }
+        }
+        item(key = "periods") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                ReportPeriod.entries.forEach { period ->
+                    val locked = period != ReportPeriod.Week && !state.isPremium
+                    ChoiceChip(
+                        text = period.label,
+                        selected = state.period == period,
+                        onClick = { onSelectPeriod(period) },
+                        icon = if (locked) Icons.Rounded.Lock else null,
+                    )
                 }
             }
         }
@@ -92,7 +121,7 @@ fun InsightsScreen(state: InsightsUiState, onShare: () -> Unit) {
     }
 }
 
-private fun LazyListScope.medicationSection(state: InsightsUiState, figures: WeeklyFigures, onShare: () -> Unit) {
+private fun LazyListScope.medicationSection(state: InsightsUiState, figures: ReportFigures, onShare: () -> Unit) {
     val adherence = figures.adherence
     if (adherence == null) {
         item(key = "meds-empty") {
@@ -112,18 +141,18 @@ private fun LazyListScope.medicationSection(state: InsightsUiState, figures: Wee
             Text("Medication taken", style = MaterialTheme.typography.titleLarge, color = colors.text)
             NeedleGauge(
                 progress = adherence,
-                description = "${Fmt.percent(adherence)} of doses taken in the past 7 days",
+                description = "${Fmt.percent(adherence)} of doses taken in the past ${figures.period.label}",
                 modifier = Modifier.padding(horizontal = Spacing.lg),
             )
             Text(
-                "Past 7 days: ${Fmt.percent(adherence)}",
+                "Past ${figures.period.label}: ${Fmt.percent(adherence)}",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.text,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
-                "$taken of $scheduled doses" + (figures.previousAdherence?.let { " · week before ${Fmt.percent(it)}" } ?: ""),
+                "$taken of $scheduled doses" + (figures.previousAdherence?.let { " · ${figures.period.label} before ${Fmt.percent(it)}" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
                 textAlign = TextAlign.Center,
@@ -140,18 +169,23 @@ private fun LazyListScope.medicationSection(state: InsightsUiState, figures: Wee
     item(key = "bars") {
         val colors = DiaTheme.colors
         DiaCard(Modifier.fillMaxWidth()) {
-            Text("Day by day", style = MaterialTheme.typography.titleMedium, color = colors.text)
+            val buckets = figures.days.bucketedFromEnd(figures.period.bucketDays)
+            Text(bucketTitle(figures.period), style = MaterialTheme.typography.titleMedium, color = colors.text)
             HatchedBarChart(
-                bars = figures.days.map { day ->
+                bars = buckets.map { bucket ->
+                    val scheduled = bucket.sumOf { it.scheduled }
+                    val ratio = if (scheduled == 0) null else bucket.sumOf { it.taken }.toFloat() / scheduled
                     BarDatum(
-                        label = Fmt.weekdayShort(day.date),
-                        value = day.ratio,
-                        highlight = day.date == state.today,
-                        valueLabel = day.ratio?.let(Fmt::percent),
+                        label = bucketLabel(bucket.first().date, figures.period),
+                        value = ratio,
+                        highlight = bucket.any { it.date == state.today },
+                        valueLabel = ratio?.let(Fmt::percent),
                     )
                 },
-                description = "Doses taken each day: " + figures.days.joinToString { d ->
-                    "${Fmt.weekday(d.date)} ${d.ratio?.let(Fmt::percent) ?: "nothing scheduled"}"
+                description = "Doses taken: " + buckets.joinToString { bucket ->
+                    val scheduled = bucket.sumOf { it.scheduled }
+                    "${Fmt.dateShort(bucket.first().date)} " +
+                        (if (scheduled == 0) "nothing scheduled" else Fmt.percent(bucket.sumOf { it.taken }.toFloat() / scheduled))
                 },
             )
         }
@@ -183,7 +217,7 @@ private fun LazyListScope.medicationSection(state: InsightsUiState, figures: Wee
     }
 }
 
-private fun LazyListScope.glucoseSection(state: InsightsUiState, figures: WeeklyFigures) {
+private fun LazyListScope.glucoseSection(state: InsightsUiState, figures: ReportFigures) {
     val glucose = figures.glucose
     val profile = state.profile
     val unit = profile.glucoseUnit
@@ -192,7 +226,7 @@ private fun LazyListScope.glucoseSection(state: InsightsUiState, figures: Weekly
         item(key = "glucose-empty") {
             EmptyState(
                 icon = Icons.Rounded.Bloodtype,
-                title = "No readings this week",
+                title = "No readings in the last ${figures.period.label}",
                 message = "Log readings on the Track tab to see your average and time in your target range.",
             )
         }
@@ -238,19 +272,28 @@ private fun LazyListScope.glucoseSection(state: InsightsUiState, figures: Weekly
     }
     item(key = "glucose-trend") {
         val colors = DiaTheme.colors
-        val values = glucose.daily.map { it.averageMgDl?.toFloat() }
+        val buckets = glucose.daily.bucketedFromEnd(figures.period.bucketDays)
+        val values = buckets.map { bucket ->
+            bucket.mapNotNull { it.averageMgDl }.takeIf { it.isNotEmpty() }?.average()?.toFloat()
+        }
         val axis = glucoseAxis(values, profile)
         DiaCard(Modifier.fillMaxWidth()) {
-            Text("Daily average", style = MaterialTheme.typography.titleMedium, color = colors.text)
+            Text(
+                if (figures.period.bucketDays == 1) "Daily average" else "Average, ${bucketTitle(figures.period).lowercase()}",
+                style = MaterialTheme.typography.titleMedium,
+                color = colors.text,
+            )
             TrendChart(
                 values = values,
-                labels = glucose.daily.map { Fmt.weekdayShort(it.date).take(1) },
+                labels = buckets.map { bucket ->
+                    if (figures.period.bucketDays == 1) Fmt.weekdayShort(bucket.first().date).take(1) else bucketLabel(bucket.first().date, figures.period)
+                },
                 yMin = axis.start,
                 yMax = axis.endInclusive,
                 band = profile.targetLowMgDl.toFloat()..profile.targetHighMgDl.toFloat(),
                 bandLabels = Glucose.format(profile.targetLowMgDl, unit) to Glucose.format(profile.targetHighMgDl, unit),
-                description = "Daily average glucose: " + glucose.daily.joinToString { d ->
-                    "${Fmt.weekday(d.date)} ${d.averageMgDl?.let { Glucose.format(it, unit) } ?: "no readings"}"
+                description = "Average glucose: " + buckets.zip(values).joinToString { (bucket, value) ->
+                    "${Fmt.dateShort(bucket.first().date)} ${value?.let { Glucose.format(it.toInt(), unit) } ?: "no readings"}"
                 },
             )
         }
@@ -273,11 +316,12 @@ private fun LazyListScope.glucoseSection(state: InsightsUiState, figures: Weekly
     }
 }
 
-private fun LazyListScope.habitsSection(state: InsightsUiState, figures: WeeklyFigures) {
+private fun LazyListScope.habitsSection(state: InsightsUiState, figures: ReportFigures) {
     val profile = state.profile
     item(key = "water") {
         HabitCard(
             title = "Water",
+            period = figures.period,
             values = figures.waterByDay,
             goal = profile.waterGoalGlasses,
             today = state.today,
@@ -288,6 +332,7 @@ private fun LazyListScope.habitsSection(state: InsightsUiState, figures: WeeklyF
     item(key = "steps") {
         HabitCard(
             title = "Steps",
+            period = figures.period,
             values = figures.stepsByDay,
             goal = profile.stepGoal,
             today = state.today,
@@ -298,6 +343,7 @@ private fun LazyListScope.habitsSection(state: InsightsUiState, figures: WeeklyF
     item(key = "minutes") {
         HabitCard(
             title = "Active minutes",
+            period = figures.period,
             values = figures.minutesByDay,
             goal = profile.walkGoalMinutes,
             today = state.today,
@@ -311,6 +357,7 @@ private fun LazyListScope.habitsSection(state: InsightsUiState, figures: WeeklyF
 @Composable
 private fun HabitCard(
     title: String,
+    period: ReportPeriod,
     values: List<Pair<LocalDate, Int>>,
     goal: Int,
     today: LocalDate,
@@ -327,34 +374,47 @@ private fun HabitCard(
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = colors.text)
                 Text(
-                    if (logged.isEmpty()) "Nothing logged this week"
+                    if (logged.isEmpty()) "Nothing logged in the last ${period.label}"
                     else "Average ${format(logged.sumOf { it.second } / logged.size)} $unitLabel on days logged",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
                 )
             }
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(96.dp)) {
-                Text("$metGoal of 7", style = MaterialTheme.typography.titleMedium, color = colors.text)
+                Text("$metGoal of ${values.size}", style = MaterialTheme.typography.titleMedium, color = colors.text)
                 Text("days at goal", style = MaterialTheme.typography.labelSmall, color = colors.textMuted)
             }
         }
+        // Longer periods show the daily average over each run of days.
+        val buckets = values.bucketedFromEnd(period.bucketDays)
         HatchedBarChart(
-            bars = values.map { (date, value) ->
+            bars = buckets.map { bucket ->
+                val perDay = bucket.sumOf { it.second } / bucket.size
                 BarDatum(
-                    label = Fmt.weekdayShort(date),
-                    value = if (value == 0) null else value / scale,
-                    highlight = date == today,
-                    valueLabel = format(value),
+                    label = bucketLabel(bucket.first().first, period),
+                    value = if (perDay == 0) null else perDay / scale,
+                    highlight = bucket.any { it.first == today },
+                    valueLabel = format(perDay),
                 )
             },
             goal = GOAL_HEIGHT,
             height = 120.dp,
-            description = "$title each day against a goal of ${format(goal)}: " +
-                values.joinToString { (date, value) -> "${Fmt.weekday(date)} ${format(value)}" },
+            description = "$title a day against a goal of ${format(goal)}: " +
+                buckets.joinToString { bucket -> "${Fmt.dateShort(bucket.first().first)} ${format(bucket.sumOf { it.second } / bucket.size)}" },
         )
     }
 }
 
 private const val GOAL_HEIGHT = 0.8f
+
+private fun bucketTitle(period: ReportPeriod): String = when (period.bucketDays) {
+    1 -> "Day by day"
+    7 -> "Week by week"
+    else -> "Every ${period.bucketDays} days"
+}
+
+/** Weekday names for a week; for longer periods, the day of the month each bar starts on. */
+private fun bucketLabel(start: LocalDate, period: ReportPeriod): String =
+    if (period.bucketDays == 1) Fmt.weekdayShort(start) else start.day.toString()
 
 private fun days(n: Int) = if (n == 1) "1 day" else "$n days"

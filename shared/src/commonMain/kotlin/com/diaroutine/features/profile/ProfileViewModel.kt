@@ -7,6 +7,7 @@ import com.diaroutine.app.AppLinks
 import com.diaroutine.domain.model.Profile
 import com.diaroutine.platform.LockAvailability
 import com.diaroutine.platform.ReminderAccess
+import com.diaroutine.premium.PremiumState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ data class ProfileUiState(
     val access: ReminderAccess,
     val lockAvailability: LockAvailability,
     val appVersion: String,
+    val premium: PremiumState = PremiumState(),
 )
 
 sealed interface ProfileAction {
@@ -44,8 +46,8 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
     private val access = MutableStateFlow(platform.reminderAccess())
     private val lockAvailability = MutableStateFlow(platform.lockAvailability())
 
-    val state: StateFlow<ProfileUiState> = combine(container.profile.profile, access, lockAvailability) { profile, access, lock ->
-        ProfileUiState(isLoading = false, profile = profile, access = access, lockAvailability = lock, appVersion = platform.appVersion)
+    val state: StateFlow<ProfileUiState> = combine(container.profile.profile, access, lockAvailability, container.premium.state) { profile, access, lock, premium ->
+        ProfileUiState(isLoading = false, profile = profile, access = access, lockAvailability = lock, appVersion = platform.appVersion, premium = premium)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -56,7 +58,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         when (action) {
             is ProfileAction.Update -> viewModelScope.launch { container.profile.update(action.transform) }
             ProfileAction.ShareSummary -> viewModelScope.launch {
-                platform.shareText("DiaRoutine weekly summary", container.weeklySummaryText())
+                platform.shareText("DiaRoutine weekly summary", container.summaryText())
             }
             ProfileAction.RequestNotifications -> platform.requestNotificationAccess()
             ProfileAction.OpenPreciseTiming -> platform.openPreciseTimingSettings()

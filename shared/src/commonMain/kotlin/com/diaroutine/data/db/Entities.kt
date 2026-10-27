@@ -4,8 +4,15 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
+
+/**
+ * The app's tables. Each entity is also @Serializable: a backup is these rows as JSON
+ * (see BackupData), so a column added later needs a default for older backups to load.
+ */
 
 /** The single profile row (id 0). */
+@Serializable
 @Entity(tableName = "profile")
 data class ProfileEntity(
     @PrimaryKey val id: Int = 0,
@@ -24,12 +31,14 @@ data class ProfileEntity(
     val caregiverName: String,
     val caregiverContact: String,
     val onboarded: Boolean,
-    // Added in version 2.
-    @ColumnInfo(defaultValue = "0") val appLockEnabled: Boolean,
-    @ColumnInfo(defaultValue = "0") val appLockAfterSeconds: Int,
-    @ColumnInfo(defaultValue = "0") val tourCompleted: Boolean,
+    // Added in version 2. Defaults let older backups load.
+    @ColumnInfo(defaultValue = "0") val appLockEnabled: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val appLockAfterSeconds: Int = 0,
+    @ColumnInfo(defaultValue = "0") val tourCompleted: Boolean = false,
+    @ColumnInfo(defaultValue = "30") val followUpMinutes: Int = 30,
 )
 
+@Serializable
 @Entity(tableName = "medications")
 data class MedicationEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -47,6 +56,7 @@ data class MedicationEntity(
     val endEpochDay: Long?,
 )
 
+@Serializable
 @Entity(
     tableName = "dose_logs",
     indices = [
@@ -64,6 +74,7 @@ data class DoseLogEntity(
     val loggedAtMillis: Long,
 )
 
+@Serializable
 @Entity(tableName = "glucose_readings", indices = [Index(value = ["atMillis"])])
 data class GlucoseReadingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -73,6 +84,7 @@ data class GlucoseReadingEntity(
     val note: String,
 )
 
+@Serializable
 @Entity(tableName = "daily_habits")
 data class DailyHabitEntity(
     @PrimaryKey val epochDay: Long,
@@ -81,6 +93,7 @@ data class DailyHabitEntity(
     val activeMinutes: Int,
 )
 
+@Serializable
 @Entity(tableName = "appointments", indices = [Index(value = ["dateTime"])])
 data class AppointmentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

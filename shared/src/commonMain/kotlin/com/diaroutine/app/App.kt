@@ -40,6 +40,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.diaroutine.features.backup.BackupSetupSheet
+import com.diaroutine.features.backup.BackupViewModel
+import com.diaroutine.features.backup.RestoreSheet
 import com.diaroutine.features.insights.InsightsRoute
 import com.diaroutine.features.lock.LockScreen
 import com.diaroutine.features.meds.MedsRoute
@@ -72,11 +75,17 @@ fun App(container: AppContainer) {
         CompositionLocalProvider(LocalPlatform provides container.platform) {
             val root = viewModel { RootViewModel(container) }
             val state by root.state.collectAsStateWithLifecycle()
+            val backup = viewModel { BackupViewModel(container) }
+            val backupState by backup.state.collectAsStateWithLifecycle()
             Box(Modifier.fillMaxSize().background(DiaTheme.colors.background), contentAlignment = Alignment.TopCenter) {
                 Crossfade(state.stage, modifier = Modifier.widthIn(max = MaxContentWidth), label = "stage") { stage ->
                     when (stage) {
                         Stage.Loading -> Box(Modifier.fillMaxSize())
-                        Stage.Onboarding -> OnboardingScreen(onAuthenticate = root::authenticate, onDone = root::completeOnboarding)
+                        Stage.Onboarding -> OnboardingScreen(
+                            onAuthenticate = root::authenticate,
+                            onDone = root::completeOnboarding,
+                            onRestoreBackup = backup::startRestore,
+                        )
                         Stage.Main -> Box(Modifier.fillMaxSize()) {
                             // Locking covers the app rather than removing it, so tabs and scroll
                             // positions are where the person left them when they unlock.
@@ -90,6 +99,11 @@ fun App(container: AppContainer) {
                             if (state.locked) LockScreen(onUnlock = root::unlock)
                         }
                     }
+                }
+                // Above every stage: a restore started during onboarding finishes in the main app.
+                if (!state.locked) {
+                    backupState.setup?.let { BackupSetupSheet(it, backup, container.timeZone) }
+                    backupState.restore?.let { RestoreSheet(it, backup, container.timeZone) }
                 }
             }
         }

@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.diaroutine.app.MainActivity
 import com.diaroutine.app.R
+import com.diaroutine.app.premium.AndroidPremiumStore
 import com.diaroutine.domain.ReminderKind
 
 object Notifications {
@@ -66,6 +67,15 @@ object Notifications {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             builder.addAction(0, context.getString(R.string.action_mark_taken), take)
+            if (AndroidPremiumStore.isPremium(context)) {
+                val snooze = PendingIntent.getBroadcast(
+                    context,
+                    reminder.id,
+                    ReminderReceiver.snoozeIntent(context, reminder),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+                builder.addAction(0, context.getString(R.string.action_snooze), snooze)
+            }
         }
         NotificationManagerCompat.from(context).notify(reminder.id, builder.build())
     }

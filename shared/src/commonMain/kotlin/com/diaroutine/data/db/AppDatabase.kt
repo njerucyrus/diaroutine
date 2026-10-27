@@ -21,7 +21,7 @@ import kotlinx.coroutines.IO
     version = 2,
     exportSchema = true,
     autoMigrations = [
-        // 2: app lock settings and the app tour flag on the profile.
+        // 2: app lock, app tour and follow-up reminder settings on the profile.
         AutoMigration(from = 1, to = 2),
     ],
 )
@@ -33,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun glucoseDao(): GlucoseDao
     abstract fun habitDao(): HabitDao
     abstract fun appointmentDao(): AppointmentDao
+    abstract fun backupDao(): BackupDao
 
     companion object {
         const val FILE_NAME = "diaroutine.db"

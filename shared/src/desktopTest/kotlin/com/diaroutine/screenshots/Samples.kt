@@ -8,7 +8,7 @@ import com.diaroutine.domain.ExampleRoutine
 import com.diaroutine.domain.GlucoseStats
 import com.diaroutine.domain.RoutineSnapshot
 import com.diaroutine.domain.Timeline
-import com.diaroutine.domain.WeeklyReport
+import com.diaroutine.domain.Report
 import com.diaroutine.domain.model.Appointment
 import com.diaroutine.domain.model.Caregiver
 import com.diaroutine.domain.model.DailyHabit
@@ -112,7 +112,7 @@ object Samples {
         isLoading = false,
         profile = profile,
         today = today,
-        figures = WeeklyReport.figures(snapshot, now, zone),
+        figures = Report.figures(snapshot, now, zone),
         hasScheduledMedication = true,
     )
 

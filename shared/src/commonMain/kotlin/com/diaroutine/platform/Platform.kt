@@ -34,8 +34,11 @@ interface PlatformServices {
 
     fun shareText(subject: String, text: String)
 
-    /** Opens a web page in the person's browser; the app itself never goes online. */
+    /** Opens a web page in the person's browser. */
     fun openUrl(url: String)
+
+    /** Copies [text] to the clipboard; [sensitive] keeps it out of clipboard previews. */
+    fun copyText(text: String, sensitive: Boolean = false)
 
     /** Starts an email in the person's mail app. */
     fun composeEmail(address: String, subject: String)

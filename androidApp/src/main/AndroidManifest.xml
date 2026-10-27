@@ -2,12 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Only for the optional encrypted backup to Google Drive (and Google Play purchases). -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Reminders are re-armed after a restart. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Lets medication reminders fire on the minute once the person allows it in settings. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- Health data stays on the device: no backups to the cloud or to other devices. -->
+    <!-- Android's own backup is off: data leaves the phone only in the optional, encrypted Drive backup. -->
     <application
         android:name=".DiaRoutineApplication"
         android:allowBackup="false"

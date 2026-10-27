@@ -54,6 +54,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -65,5 +66,9 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.billing)
+    implementation(libs.play.services.auth)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit)
 }

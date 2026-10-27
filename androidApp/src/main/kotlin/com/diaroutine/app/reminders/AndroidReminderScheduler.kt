@@ -24,15 +24,25 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
                 ?.let { alarms.cancel(it); it.cancel() }
         }
 
-        val exact = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
-        reminders.forEach { reminder ->
+        reminders.forEach { reminder -> setAlarm(context, reminder.id, reminder) }
+        prefs.edit { putStringSet(KEY_IDS, ids.map(Int::toString).toSet()) }
+    }
+
+    companion object {
+        private const val KEY_IDS = "scheduled_ids"
+        private const val WINDOW_MILLIS = 10 * 60 * 1000L
+
+        /** Sets the alarm that shows [reminder]; [requestCode] tells it apart from other alarms. */
+        fun setAlarm(context: Context, requestCode: Int, reminder: Reminder) {
+            val alarms = context.getSystemService(AlarmManager::class.java)
             val pending = PendingIntent.getBroadcast(
                 context,
-                reminder.id,
+                requestCode,
                 ReminderReceiver.showIntent(context, reminder),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             val at = reminder.at.toEpochMilliseconds()
+            val exact = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
             try {
                 if (exact) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending)
                 else alarms.setWindow(AlarmManager.RTC_WAKEUP, at, WINDOW_MILLIS, pending)
@@ -41,11 +51,5 @@ class AndroidReminderScheduler(private val context: Context) : ReminderScheduler
                 alarms.setWindow(AlarmManager.RTC_WAKEUP, at, WINDOW_MILLIS, pending)
             }
         }
-        prefs.edit { putStringSet(KEY_IDS, ids.map(Int::toString).toSet()) }
-    }
-
-    private companion object {
-        const val KEY_IDS = "scheduled_ids"
-        const val WINDOW_MILLIS = 10 * 60 * 1000L
     }
 }

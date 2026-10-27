@@ -2,11 +2,15 @@ package com.diaroutine.app
 
 import android.app.AlarmManager
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PersistableBundle
 import android.provider.Settings
 import android.text.format.DateFormat
 import androidx.biometric.BiometricManager
@@ -49,6 +53,16 @@ class AndroidPlatformServices(private val context: Context) : PlatformServices {
 
     override fun openUrl(url: String) {
         start(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    override fun copyText(text: String, sensitive: Boolean) {
+        val clip = ClipData.newPlainText("DiaRoutine", text)
+        if (sensitive) {
+            clip.description.extras = PersistableBundle().apply {
+                putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
+            }
+        }
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
     }
 
     override fun composeEmail(address: String, subject: String) {

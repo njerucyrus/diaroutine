@@ -1,9 +1,20 @@
 package com.diaroutine.screenshots
 
 import androidx.compose.runtime.Composable
-import com.diaroutine.domain.WeeklyReport
+import com.diaroutine.domain.Report
 import com.diaroutine.domain.model.MealContext
+import com.diaroutine.backup.BackupStatus
+import com.diaroutine.backup.CloudBackupInfo
+import com.diaroutine.core.time.instantIn
+import com.diaroutine.domain.ReportPeriod
+import com.diaroutine.features.backup.BackupCard
+import com.diaroutine.features.backup.BackupSetupSheet
+import com.diaroutine.features.backup.BackupUiState
+import com.diaroutine.features.backup.RestoreSheet
+import com.diaroutine.features.backup.RestoreStep
+import com.diaroutine.features.backup.SetupStep
 import com.diaroutine.features.insights.InsightsScreen
+import com.diaroutine.features.premium.PaywallSheet
 import com.diaroutine.features.meds.MedicationEditorSheet
 import com.diaroutine.features.meds.MedsScreen
 import com.diaroutine.features.lock.LockScreen
@@ -23,6 +34,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.hours
 
 /** Renders each screen with a realistic week of data, as a phone would show it. */
 class ScreenshotTest {
@@ -39,7 +51,47 @@ class ScreenshotTest {
         tall("02-meds") { MedsScreen(medsState, {}, zone) }
         tall("03-track") { TrackScreen(Samples.trackState, {}, zone) }
         tall("04-insights") { InsightsScreen(Samples.insightsState, onShare = {}) }
-        tall("05-profile") { ProfileScreen(Samples.profileState, onAction = {}, onStartTour = {}) }
+        tall("05-profile") {
+            ProfileScreen(
+                Samples.profileState.copy(premium = FreeWithTrial),
+                onAction = {},
+                onStartTour = {},
+                backupCard = { BackupCard(BackupUiState(isPremium = false), zone, {}, {}, NoBackupActions) },
+            )
+        }
+        tall("05-profile-premium") {
+            val backedUp = BackupStatus(
+                account = "lina@gmail.com", connected = true, hasRecoveryKey = true, weekly = true,
+                lastBackupAt = Samples.now.instantIn(zone) - 26.hours,
+            )
+            ProfileScreen(
+                Samples.profileState.copy(premium = PremiumActive),
+                onAction = {},
+                onStartTour = {},
+                backupCard = { BackupCard(BackupUiState(status = backedUp, isPremium = true), zone, {}, {}, NoBackupActions) },
+            )
+        }
+        save("11-paywall", renderScreen { InsightsScreen(Samples.insightsState, onShare = {}); PaywallSheet(FakePremiumStore(FreeWithTrial)) {} })
+        save(
+            "12-backup-key",
+            renderScreen {
+                InsightsScreen(Samples.insightsState, onShare = {})
+                BackupSetupSheet(SetupStep.SaveKey("7K2M-Q9XD-4HNB-T8VW-PZ3C-6RJE-KA5F-M2YG", saved = true), NoBackupActions, zone)
+            },
+        )
+        save(
+            "13-restore",
+            renderScreen {
+                InsightsScreen(Samples.insightsState, onShare = {})
+                RestoreSheet(RestoreStep.Found(CloudBackupInfo(Samples.now.instantIn(zone) - 50.hours, 86_000, null)), NoBackupActions, zone)
+            },
+        )
+        val month = Samples.insightsState.copy(
+            period = ReportPeriod.Month,
+            isPremium = true,
+            figures = Report.figures(Samples.snapshot, Samples.now, zone, ReportPeriod.Month),
+        )
+        save("14-insights-30-days", renderScreen(selectedTab = 3) { InsightsScreen(month, onShare = {}) })
         // First run: every slide, then each step. Notifications off so the reminders step shows.
         val firstRun = FakePlatform(notificationsAllowed = false)
         (0..3).forEach { slide ->
@@ -68,7 +120,7 @@ class ScreenshotTest {
             },
         )
         File(out, "summary.txt").writeText(
-            WeeklyReport.text(Samples.snapshot, WeeklyReport.figures(Samples.snapshot, Samples.now, zone)),
+            Report.text(Samples.snapshot, Report.figures(Samples.snapshot, Samples.now, zone)),
         )
     }
 

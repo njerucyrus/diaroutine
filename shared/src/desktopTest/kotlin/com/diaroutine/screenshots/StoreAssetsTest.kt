@@ -44,6 +44,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.diaroutine.features.backup.BackupSetupSheet
+import com.diaroutine.features.backup.SetupStep
 import com.diaroutine.features.insights.InsightsScreen
 import com.diaroutine.features.lock.LockScreen
 import com.diaroutine.features.meds.MedsScreen
@@ -125,6 +127,10 @@ class StoreAssetsTest {
         },
         Shot("07-app-lock", "Locked with your\nfingerprint or face", "Keep your health data private.") {
             LockScreen(onUnlock = {})
+        },
+        Shot("08-backup", "Backed up, readable\nonly by you", "Encrypted weekly backup to your Drive.") {
+            InsightsScreen(Samples.insightsState, onShare = {})
+            BackupSetupSheet(SetupStep.SaveKey("7K2M-Q9XD-4HNB-T8VW-PZ3C-6RJE-KA5F-M2YG", saved = true), NoBackupActions, zone)
         },
     )
 

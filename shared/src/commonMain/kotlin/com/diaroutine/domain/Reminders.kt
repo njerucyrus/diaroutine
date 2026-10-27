@@ -39,12 +39,20 @@ object ReminderPlanner {
     val HORIZON: Duration = 48.hours
     val REFILL_TIME = LocalTime(9, 0)
 
+    /** How many times a dose not yet answered is reminded again (Premium). */
+    const val MAX_FOLLOW_UPS = 2
+
+    /**
+     * With [followUpMinutes] above 0, each dose not yet taken or skipped is reminded again
+     * that long after it was due, up to [MAX_FOLLOW_UPS] times.
+     */
     fun plan(
         now: Instant,
         zone: TimeZone,
         snapshot: RoutineSnapshot,
         use24Hour: Boolean,
         horizon: Duration = HORIZON,
+        followUpMinutes: Int = 0,
     ): List<Reminder> {
         val profile = snapshot.profile
         if (!profile.onboarded || !profile.remindersEnabled) return emptyList()
@@ -58,18 +66,35 @@ object ReminderPlanner {
             for (med in snapshot.medications) {
                 if (!med.isScheduled || !med.isActiveOn(date)) continue
                 for (time in med.times.distinct()) {
-                    val at = date.at(time).instantIn(zone)
-                    if (!inWindow(at)) continue
                     val answered = snapshot.doseLogs.any { it.medicationId == med.id && it.date == date && it.scheduledTime == time }
                     if (answered) continue
-                    reminders += Reminder(
-                        id = stableId("dose", med.id, date.epochDay, time.minuteOfDay),
-                        at = at,
-                        kind = ReminderKind.Dose,
-                        title = "Time for ${med.name}",
-                        body = listOf(med.doseDescription, med.instructions.trim()).filter { it.isNotEmpty() }.joinToString(" · "),
-                        dose = DoseRef(med.id, date.epochDay, time.minuteOfDay),
-                    )
+                    val at = date.at(time).instantIn(zone)
+                    val dose = DoseRef(med.id, date.epochDay, time.minuteOfDay)
+                    if (inWindow(at)) {
+                        reminders += Reminder(
+                            id = stableId("dose", med.id, date.epochDay, time.minuteOfDay),
+                            at = at,
+                            kind = ReminderKind.Dose,
+                            title = "Time for ${med.name}",
+                            body = listOf(med.doseDescription, med.instructions.trim()).filter { it.isNotEmpty() }.joinToString(" · "),
+                            dose = dose,
+                        )
+                    }
+                    // A dose already overdue can still have follow-ups ahead of it.
+                    if (followUpMinutes > 0) {
+                        for (n in 1..MAX_FOLLOW_UPS) {
+                            val followUpAt = at + (followUpMinutes * n).minutes
+                            if (!inWindow(followUpAt)) continue
+                            reminders += Reminder(
+                                id = stableId("follow-up", med.id, date.epochDay, time.minuteOfDay, n),
+                                at = followUpAt,
+                                kind = ReminderKind.Dose,
+                                title = "Still due: ${med.name}",
+                                body = "Scheduled for ${Fmt.time(time, use24Hour)} — mark it taken or skip it",
+                                dose = dose,
+                            )
+                        }
+                    }
                 }
             }
 
