@@ -170,14 +170,14 @@ what the user enters. (The disclaimer is shown during onboarding, in Profile →
 
 **Release name**: `1.0.0 (1)`
 
-**Release notes** (500 max, `en-US`)
+**Release notes** (500 max, `en-US`) — also in [RELEASE_NOTES.md](../RELEASE_NOTES.md)
 
 ```
-First release of DiaRoutine:
-• A daily timeline of doses, glucose checks, walks and appointments
-• Medication reminders with "Mark as taken"
-• Glucose log (mg/dL or mmol/L), water and activity tracking
-• Appointment and refill reminders, weekly summary, caregiver sharing
+Welcome to DiaRoutine 1.0:
+• Your day in one timeline: doses, glucose checks, walks and appointments
+• Medication reminders with "Mark as taken", plus refill alerts
+• Glucose log in mg/dL or mmol/L, water and activity tracking
+• Weekly summary with streaks, and caregiver sharing
 • App lock with fingerprint, face or screen lock
 • Premium, free for 3 months: encrypted Google Drive backup, missed-dose follow-ups, 30- and 90-day insights
 ```

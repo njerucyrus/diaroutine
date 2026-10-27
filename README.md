@@ -96,11 +96,12 @@ upload key can be reset through Play Console support.
 Bump `versionCode` (and `versionName`) in `androidApp/build.gradle.kts` for every upload.
 Everything to paste into Play Console — listing text, Data safety, content rating, health
 declaration, release notes — is in [playstore/listing.md](playstore/listing.md), with the
-graphics beside it.
+graphics beside it. Release notes for each version, with the Play "What's new" text, are in
+[RELEASE_NOTES.md](RELEASE_NOTES.md); add the same notes to `docs/whats-new.html`.
 
 ## Website (GitHub Pages)
 
-`docs/` is the public site: a landing page, the Privacy Policy and the Terms of Use, served at
+`docs/` is the public site: a landing page, release notes, the Privacy Policy and the Terms of Use, served at
 https://njerucyrus.github.io/diaroutine/. To publish it, push this repository to
 `github.com/njerucyrus/diaroutine` (it must be public for free Pages), then in the repo's
 **Settings → Pages** choose *Deploy from a branch*, branch `main`, folder `/docs`.
